@@ -10,7 +10,7 @@ from app.core.security import (
     issue_tokens,
     verify_token,
 )
-from app.db.repositories.user_repository import UserRepository
+from app.db.repositories.user_repos import UserRepository
 from app.web.schemas import (
     UserRegisterRequest,
     UserLoginResponse,
