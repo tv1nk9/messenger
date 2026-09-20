@@ -4,3 +4,4 @@ __pycache__
 .env
 pgdata
 notes.txt
+logs

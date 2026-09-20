@@ -1,8 +1,13 @@
+from loguru import logger
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.web.main import api_router
 from app.core.configs import settings
+from app.core.logger_config import setup_logger
+
+setup_logger()
 
 app = FastAPI(
     title="Messenger",
@@ -19,3 +24,4 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+logger.info("App start")
