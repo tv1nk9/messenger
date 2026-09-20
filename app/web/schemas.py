@@ -29,7 +29,7 @@ class UserRegisterRequest(BaseModel):
         max_length=user_config.MAX_LENGTH_USERNAME
     )
     password: str = Field(
-        min_length=user_config.MAX_LENGTH_PASSWORD,
+        min_length=user_config.MIN_LENGTH_PASSWORD,
         max_length=user_config.MAX_LENGTH_PASSWORD
     )
 

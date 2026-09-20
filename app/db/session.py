@@ -5,8 +5,10 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 engine = create_async_engine(
-    os.getenv("DATABASE_URL"), pool_pre_ping=True, pool_size=20, max_overflow=10
+    DATABASE_URL, pool_pre_ping=True, pool_size=20, max_overflow=10
 )
 
 session_factory = async_sessionmaker(
