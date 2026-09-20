@@ -1,7 +1,6 @@
 import jwt
 import asyncio
 
-from jwt import InvalidTokenError
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from datetime import datetime, timezone
