@@ -1,7 +1,7 @@
 services:
   db:
-    image: postgres:latest
-    container_name: database
+    image: postgres:18.6-alpine
+    container_name: messenger_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -10,7 +10,7 @@ services:
     ports:
       - "5430:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data/pgdata
+      - pgdata:/var/lib/postgresql/data/pgdata
     deploy:
       resources:
         limits:
@@ -33,8 +33,6 @@ services:
       timeout: 10s
       retries: 5
     restart: unless-stopped
-    tty: true
-    stdin_open: true
 
   app:
     build: .
