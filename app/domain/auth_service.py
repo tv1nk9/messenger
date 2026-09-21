@@ -57,7 +57,7 @@ class AuthService:
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
-        return self._get_tokens(user.id, ver, access_jti, refresh_jti)
+        return self._get_tokens(str(user.id), ver, access_jti, refresh_jti)
 
 
     @staticmethod
