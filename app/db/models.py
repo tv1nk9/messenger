@@ -1,7 +1,7 @@
-from sqlalchemy import String, DateTime, func, ForeignKey, text, Integer
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.core.configs import user_config, chat_config
+from app.core.configs import chat_config, user_config
 
 
 class Base(DeclarativeBase):

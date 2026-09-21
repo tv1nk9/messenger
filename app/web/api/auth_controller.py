@@ -3,13 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.web.deps import AuthServiceDep
 from app.web.schemas import (
+    TokenRefreshRequest,
+    UserLoginResponse,
     UserRegisterRequest,
     UserRegisterResponse,
-    UserLoginResponse,
-    TokenRefreshRequest,
 )
-from app.web.deps import AuthServiceDep
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -1,21 +1,23 @@
 import uuid
+
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from loguru import logger
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
     get_password_hash,
-    verify_password,
     issue_tokens,
+    verify_password,
     verify_token,
 )
 from app.db.repositories.user_repos import UserRepository
 from app.web.schemas import (
-    UserRegisterRequest,
-    UserLoginResponse,
-    UserRegisterResponse,
     TokenRefreshRequest,
+    UserLoginResponse,
+    UserRegisterRequest,
+    UserRegisterResponse,
 )
 
 
@@ -31,6 +33,7 @@ class AuthService:
                 password_hash= await get_password_hash(user_in.password),
             )
         except IntegrityError:
+            logger.warning(f"Registration failed: username '{user_in.username}' already exists")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Username already exist",
@@ -43,6 +46,7 @@ class AuthService:
     ) -> UserLoginResponse:
         user = await self._repo.get_user_by_username(form_data.username)
         if not user or not await verify_password(user.password_hash, form_data.password):
+            logger.warning(f"Authorization failed for user: '{user.username}'. Invalid credentials")
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         ver = 1  # временно, потом редис добавлю
@@ -56,12 +60,14 @@ class AuthService:
     async def refresh_access_token(request: TokenRefreshRequest) -> UserLoginResponse:
         payload = verify_token(request.refresh_token)
         if not payload or payload.get("type") != "refresh":
+            logger.warning("Invalid or expired refresh token")
             raise HTTPException(
                 status_code=401, detail="Invalid or expired refresh token"
             )
 
         user_id = payload.get("sub")
         if not user_id:
+            logger.warning("Invalid token payload")
             raise HTTPException(status_code=401, detail="Invalid token payload")
 
         ver = 1 # временно, потом редис добавлю
@@ -78,6 +84,7 @@ class AuthService:
             or not tokens.get("access_token")
             or not tokens.get("refresh_token")
         ):
+            logger.warning(f"Token generation failed for user with id: '{user_id}'")
             raise HTTPException(status_code=500, detail="Token generation failed")
 
         return UserLoginResponse(

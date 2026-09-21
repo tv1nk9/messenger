@@ -1,11 +1,10 @@
-from loguru import logger
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
-from app.web.main import api_router
 from app.core.configs import settings
 from app.core.logger_config import setup_logger
+from app.web.main import api_router
 
 setup_logger()
 

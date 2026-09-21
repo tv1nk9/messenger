@@ -1,9 +1,8 @@
-import sys
 import os
-
+import sys
 from datetime import datetime
+
 from loguru import logger
-from pydantic.v1.parse import load_file
 
 
 def setup_logger():

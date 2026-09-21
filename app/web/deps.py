@@ -1,14 +1,11 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query, status, Cookie
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.configs import settings
-from app.core.security import verify_token
-from app.db.models import UserModel
 from app.db.session import SessionDep
 from app.domain.auth_service import AuthService
-from app.web.schemas import CurrentUser
 
 
 def get_auth_service(session: SessionDep) -> AuthService:
