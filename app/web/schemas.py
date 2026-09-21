@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.core.configs import chat_config, user_config
+from app.db.models import UserRole
 
 
 # Auxiliary models
@@ -24,9 +25,22 @@ class UserMessage(BaseModel):
 
 # Request models
 class UserRegisterRequest(BaseModel):
-    username: str = Field(
+    role: UserRole
+    name: str = Field(
         min_length=user_config.MIN_LENGTH_USERNAME,
         max_length=user_config.MAX_LENGTH_USERNAME
+    )
+    surname: str = Field(
+        min_length=user_config.MIN_LENGTH_USERNAME,
+        max_length=user_config.MAX_LENGTH_USERNAME
+    )
+    patronymic: str = Field(
+        min_length=user_config.MIN_LENGTH_USERNAME,
+        max_length=user_config.MAX_LENGTH_USERNAME
+    )
+    email: str = Field(
+        min_length=4,
+        max_length=32
     )
     password: str = Field(
         min_length=user_config.MIN_LENGTH_PASSWORD,

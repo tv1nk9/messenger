@@ -29,7 +29,11 @@ class AuthService:
         """raise HTTPException if user created failed | new user uuid by str if user created successful"""
         try:
             new_user_id = await self._repo.create_user(
-                username=user_in.username,
+                role=user_in.role,
+                name=user_in.name,
+                surname=user_in.surname,
+                patronymic=user_in.patronymic,
+                email=user_in.email,
                 password_hash= await get_password_hash(user_in.password),
             )
         except IntegrityError:

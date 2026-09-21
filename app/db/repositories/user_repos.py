@@ -1,16 +1,25 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import UserModel
+from app.db.models import UserModel, UserRole
 
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def create_user(self, username: str, password_hash: str) -> str:
+    async def create_user(
+            self, name: str, surname: str, patronymic: str, email: str, password_hash: str, role: UserRole
+    ) -> str:
         """Create user and return new user uuid by str"""
-        new_user = UserModel(username=username, password_hash=password_hash)
+        new_user = UserModel(
+            role=role,
+            name=name,
+            surname=surname,
+            patronymic=patronymic,
+            email=email,
+            password_hash=password_hash
+        )
         self._session.add(new_user)
         await self._session.commit()
         await self._session.refresh(new_user)
