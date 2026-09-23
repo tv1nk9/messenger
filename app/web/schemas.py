@@ -7,6 +7,7 @@ from app.db.models import UserRole
 # Auxiliary models
 class CurrentUser(BaseModel):
     user_id: str
+    role: UserRole
     access_token: str
     username: str | None = None
 
