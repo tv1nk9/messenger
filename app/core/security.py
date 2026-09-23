@@ -7,6 +7,7 @@ from argon2.exceptions import VerifyMismatchError
 from jwt.exceptions import InvalidTokenError
 
 from app.core.configs import jwt_config
+from app.db.models import UserRole
 
 ph = PasswordHasher()
 
@@ -23,7 +24,7 @@ def verify_token(token: str) -> None | dict:
         return None
 
 
-def generate_token(subject: str, token_type: str, jti: str, ver: int) -> None | str:
+def generate_token(subject: str, role: UserRole, token_type: str, jti: str, ver: int) -> None | str:
     if not subject:
         return None
 
@@ -37,6 +38,7 @@ def generate_token(subject: str, token_type: str, jti: str, ver: int) -> None | 
 
     payload = {
         "sub": subject,
+        "role": role.value,
         "jti": jti,
         "type": token_type,
         "ver": ver,
@@ -47,14 +49,14 @@ def generate_token(subject: str, token_type: str, jti: str, ver: int) -> None | 
 
 
 def issue_tokens(
-    user_id: str, ver: int, access_jti: str, refresh_jti: str
+    user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str
 ) -> None | dict:
     if not user_id:
         return None
 
     return {
-        "access_token": generate_token(user_id, "access", access_jti, ver),
-        "refresh_token": generate_token(user_id, "refresh", refresh_jti, ver),
+        "access_token": generate_token(user_id, role, "access", access_jti, ver),
+        "refresh_token": generate_token(user_id, role, "refresh", refresh_jti, ver),
     }
 
 async def verify_password(password_hash: str, password: str) -> bool:
@@ -62,8 +64,6 @@ async def verify_password(password_hash: str, password: str) -> bool:
         await asyncio.to_thread(ph.verify, password_hash, password)
         return True
     except VerifyMismatchError:
-        return False
-    except Exception:
         return False
 
 async def get_password_hash(password: str) -> str:
