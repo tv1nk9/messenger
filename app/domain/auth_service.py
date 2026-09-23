@@ -12,6 +12,7 @@ from app.core.security import (
     verify_password,
     verify_token,
 )
+from app.db.models import UserRole
 from app.db.repositories.user_repos import UserRepository
 from app.web.schemas import (
     TokenRefreshRequest,
@@ -37,7 +38,7 @@ class AuthService:
                 password_hash= await get_password_hash(user_in.password),
             )
         except IntegrityError:
-            logger.warning(f"Registration failed: username '{user_in.username}' already exists")
+            logger.warning(f"Registration failed. Email '{user_in.email}' already exists")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Username already exist",
@@ -48,17 +49,16 @@ class AuthService:
     async def authorization(
         self, form_data: OAuth2PasswordRequestForm
     ) -> UserLoginResponse:
-        user = await self._repo.get_user_by_username(form_data.username)
+        user = await self._repo.get_user_by_email(form_data.username) # form_data.username это email пользователя
         if not user or not await verify_password(user.password_hash, form_data.password):
-            logger.warning(f"Authorization failed for user: '{user.username}'. Invalid credentials")
+            logger.warning(f"Authorization failed for user email: '{form_data.username}'. Invalid credentials")
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        ver = 1  # временно, потом редис добавлю
+        ver = 1  # временно
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
-        return self._get_tokens(str(user.id), ver, access_jti, refresh_jti)
-
+        return self._get_tokens(str(user.id), user.role, ver, access_jti, refresh_jti)
 
     @staticmethod
     async def refresh_access_token(request: TokenRefreshRequest) -> UserLoginResponse:
@@ -73,16 +73,17 @@ class AuthService:
         if not user_id:
             logger.warning("Invalid token payload")
             raise HTTPException(status_code=401, detail="Invalid token payload")
+        user_role = payload.get("role")
 
-        ver = 1 # временно, потом редис добавлю
+        ver = 1 # временно
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
-        return AuthService._get_tokens(user_id, ver, access_jti, refresh_jti)
+        return AuthService._get_tokens(user_id, user_role, ver, access_jti, refresh_jti)
 
     @staticmethod
-    def _get_tokens(user_id: str, ver: int, access_jti: str, refresh_jti: str) -> UserLoginResponse:
-        tokens = issue_tokens(user_id, ver, access_jti, refresh_jti)
+    def _get_tokens(user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str) -> UserLoginResponse:
+        tokens = issue_tokens(user_id, role, ver, access_jti, refresh_jti)
         if (
             not tokens
             or not tokens.get("access_token")
