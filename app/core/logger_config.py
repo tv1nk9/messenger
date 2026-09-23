@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from loguru import logger
 
@@ -29,7 +30,8 @@ def setup_logger():
 
         os.makedirs("logs", exist_ok=True)
 
-        log_filename = f"logs/app_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+        LOCAL_TZ = ZoneInfo("Europe/Moscow")
+        log_filename = f"logs/app_{datetime.now(LOCAL_TZ).strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
         logger.add(
             log_filename,
