@@ -21,7 +21,7 @@ class UserMessage(BaseModel):
     user_id: str
     username: str
     content: str = Field(min_length=1, max_length=chat_config.MAX_LENGTH_MESSAGE)
-    created_at: str | None = None
+    created_at: str
 
 
 # Request models
@@ -53,7 +53,7 @@ class TokenRefreshRequest(BaseModel):
     refresh_token: str
 
 
-class ChatCreateRequest(BaseModel):
+class GroupChatCreateRequest(BaseModel):
     chat_name: str = Field(
         min_length=chat_config.MIN_LENGTH_CHAT_NAME,
         max_length=chat_config.MAX_LENGTH_CHAT_NAME
@@ -62,6 +62,7 @@ class ChatCreateRequest(BaseModel):
         min_length=chat_config.MIN_LENGTH_CHAT_DESC,
         max_length=chat_config.MAX_LENGTH_CHAT_DESC
     )
+    created_at: str
 
 
 class ChatConnectRequest(BaseModel):
