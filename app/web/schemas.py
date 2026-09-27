@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.configs import chat_config, user_config
 from app.db.models import UserRole
@@ -35,7 +35,7 @@ class UserRegisterRequest(BaseModel):
         min_length=user_config.MIN_LENGTH_USERNAME,
         max_length=user_config.MAX_LENGTH_USERNAME
     )
-    patronymic: str = Field(
+    patronymic: str | None = Field(
         min_length=user_config.MIN_LENGTH_USERNAME,
         max_length=user_config.MAX_LENGTH_USERNAME
     )
@@ -75,6 +75,10 @@ class ChatConnectRequest(BaseModel):
     )
     user_id: str
 
+class FindUserRequest(BaseModel):
+    name: str
+    surname: str
+    patronymic: str | None
 
 # Response models
 class Message(BaseModel):
@@ -101,5 +105,9 @@ class UserLoginResponse(BaseModel):
     refresh_token: str
 
 
-class ListChatResponse(BaseModel):
+class FindChatResponse(BaseModel):
     chats: list[ChatInfo]
+
+class FindUsersResponse(BaseModel):
+    # {uuid: Name, Surname, Patronymic | None}
+    users: dict[str, tuple[str, str, str | None]] | None
