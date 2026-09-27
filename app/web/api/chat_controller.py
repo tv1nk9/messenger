@@ -1,18 +1,30 @@
 from fastapi import APIRouter
 
-from app.web.deps import CurrentUserDep
-from app.web.schemas import GroupChatCreateRequest
+from app.web.deps import ChatServiceDep, CurrentUserDep
+from app.web.schemas import (
+    GroupChatCreateRequest,
+    GroupChatCreateResponse,
+    PrivateChatCreateRequest,
+    PrivateChatCreateResponse,
+)
 
 router = APIRouter(prefix="/chat", tags=["chats"])
 
 @router.post("/create_group_chat", response_model=GroupChatCreateResponse)
 async def create_group_chat(
-        service: ChatServiceDep, cur_user: CurrentUserDep, req: GroupChatCreateRequest
+        service: ChatServiceDep, user: CurrentUserDep, req: GroupChatCreateRequest
 ):
-    pass
+    return await service.create_group_chat(
+        new_chat_request=req,
+        cur_user=user
+    )
+
 
 @router.post("/create_private_chat", response_model=PrivateChatCreateResponse)
 async def create_private_chat(
         service: ChatServiceDep, cur_user: CurrentUserDep, req: PrivateChatCreateRequest
 ):
-    pass
+    return await service.create_private_chat(
+        new_chat_request=req,
+        cur_user=cur_user
+    )
