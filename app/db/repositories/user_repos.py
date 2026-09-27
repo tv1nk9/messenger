@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import UserModel, UserRole
@@ -9,7 +9,13 @@ class UserRepository:
         self._session = session
 
     async def create_user(
-            self, name: str, surname: str, patronymic: str, email: str, password_hash: str, role: UserRole
+            self,
+            name: str,
+            surname: str,
+            patronymic: str,
+            email: str,
+            password_hash: str,
+            role: UserRole
     ) -> str:
         """Create user and return new user uuid by str"""
         new_user = UserModel(
@@ -30,10 +36,30 @@ class UserRepository:
         res = await self._session.execute(query)
         return res.scalar_one_or_none()
 
-    async def get_user_by_email(self, email: str) -> UserModel:
+    async def get_user_by_email(self, email: str) -> UserModel | None:
         query = select(UserModel).where(UserModel.email == email)
         res = await self._session.execute(query)
         return res.scalar_one_or_none()
+
+    async def get_users_by_filters(
+            self,
+            name: str | None,
+            surname: str | None,
+            patronymic: str | None
+    ) -> Sequence[UserRole]:
+        limit = 10
+        query = select(UserModel)
+
+        if name:
+            query = query.where(UserModel.name == name)
+        if surname:
+            query = query.where(UserModel.surname == surname)
+        if patronymic:
+            query = query.where(UserModel.patronymic == patronymic)
+
+        res = await self._session.execute(query.limit(limit))
+
+        return res.scalars().all()
 
     async def delete_user(self):
         pass
