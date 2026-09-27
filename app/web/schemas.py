@@ -62,7 +62,10 @@ class GroupChatCreateRequest(BaseModel):
         min_length=chat_config.MIN_LENGTH_CHAT_DESC,
         max_length=chat_config.MAX_LENGTH_CHAT_DESC
     )
-    created_at: str
+
+
+class PrivateChatCreateRequest(BaseModel):
+    user_2_id: str
 
 
 class ChatConnectRequest(BaseModel):
@@ -80,6 +83,13 @@ class Message(BaseModel):
         max_length=chat_config.MAX_LENGTH_MESSAGE
     )
 
+class PrivateChatCreateResponse(BaseModel):
+    chat_id: str
+
+
+class GroupChatCreateResponse(BaseModel):
+    chat_id: str
+
 
 class UserRegisterResponse(BaseModel):
     user_id: str | None
@@ -89,10 +99,6 @@ class UserLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     refresh_token: str
-
-
-class RoomCreateResponse(BaseModel):
-    room_id: str
 
 
 class ListChatResponse(BaseModel):
