@@ -8,6 +8,7 @@ from app.core.security import verify_token
 from app.db.models import UserRole
 from app.db.session import SessionDep
 from app.domain.auth_service import AuthService
+from app.domain.chat_service import ChatService
 from app.web.schemas import CurrentUser
 
 
@@ -15,7 +16,12 @@ def get_auth_service(session: SessionDep) -> AuthService:
     return AuthService(session)
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
-# RoomServiceDep = Annotated[RoomService, Depends(get_room_service)]
+
+
+def get_chat_service(session: SessionDep) -> ChatService:
+    return ChatService(session)
+
+ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -28,14 +34,20 @@ async def get_current_user(token: TokenDep) -> CurrentUser:
     if not payload or not payload.get("sub") or payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    return CurrentUser(user_id=payload.get("sub"), role=payload.get("role"), access_token=token)
+    return CurrentUser(
+        user_id=payload.get("sub"),
+        role=payload.get("role"),
+        access_token=token
+    )
 
 CurrentUserDep = Annotated[CurrentUser, Depends(get_current_user)]
 
 
 async def require_admin(current_user: CurrentUserDep):
     if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Only administrator can perform this action")
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrator can perform this action")
     return current_user
 
 AdminUserDep = Annotated[CurrentUser, Depends(require_admin)]
