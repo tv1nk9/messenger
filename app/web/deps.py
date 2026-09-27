@@ -9,6 +9,7 @@ from app.db.models import UserRole
 from app.db.session import SessionDep
 from app.domain.auth_service import AuthService
 from app.domain.chat_service import ChatService
+from app.domain.info_service import InfoService
 from app.web.schemas import CurrentUser
 
 
@@ -22,6 +23,11 @@ def get_chat_service(session: SessionDep) -> ChatService:
     return ChatService(session)
 
 ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
+
+def get_info_service(session: SessionDep) -> InfoService:
+    return InfoService(session)
+
+InfoServiceDep = Annotated[InfoService, Depends(get_info_service)]
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
