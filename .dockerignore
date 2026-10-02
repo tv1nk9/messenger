@@ -4,3 +4,5 @@ __pycache__/
 .git/
 notes.txt
 .env
+.postman
+postman
