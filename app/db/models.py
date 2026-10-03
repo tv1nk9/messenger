@@ -159,11 +159,14 @@ class GroupChatMemberModel(Base):
         nullable=False
     )
     joined_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.now(),
         nullable=False
     )
 
-    user: Mapped["UserModel"] = relationship()
+    user: Mapped["UserModel"] = relationship(
+        foreign_keys=[user_id]
+    )
     chat: Mapped["GroupChatModel"] = relationship(
         back_populates="members"
     )
@@ -186,6 +189,13 @@ class PrivateChatModel(ChatModel):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True
+    )
+
+    user_1: Mapped["UserModel | None"] = relationship(
+        foreign_keys=[user_1_id]
+    )
+    user_2: Mapped["UserModel | None"] = relationship(
+        foreign_keys=[user_2_id]
     )
 
     __mapper_args__ = {
@@ -228,6 +238,11 @@ class MessageModel(Base):
         nullable=True,
         index=True
     )
+    recipient_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
     content: Mapped[str] = mapped_column(
         String(chat_config.MAX_LENGTH_MESSAGE),
         nullable=False
@@ -240,7 +255,12 @@ class MessageModel(Base):
     chat: Mapped["ChatModel"] = relationship(
         back_populates="messages"
     )
-    sender: Mapped["UserModel | None"] = relationship()
+    sender: Mapped["UserModel | None"] = relationship(
+        foreign_keys=[sender_id]
+    )
+    recipient: Mapped["UserModel | None"] = relationship(
+        foreign_keys=[recipient_id]
+    )
 
     __table_args__ = (
         Index(
