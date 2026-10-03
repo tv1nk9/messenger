@@ -1,8 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.main import templates
 from app.web.deps import AdminUserDep, AuthServiceDep
 from app.web.schemas import (
     TokenRefreshRequest,
@@ -13,9 +15,11 @@ from app.web.schemas import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# @router.post("/register_not_protect", response_model=UserRegisterResponse)
-# async def register(service: AuthServiceDep, user_in: UserRegisterRequest):
-#     return await service.registration(user_in)
+# authorization page
+@router.get("/", response_class=HTMLResponse, summary="Auth page")
+async def get_categories(request: Request):
+    return templates.TemplateResponse(request,"auth.html")
+
 
 @router.post("/register", response_model=UserRegisterResponse)
 async def register(service: AuthServiceDep, admin_user: AdminUserDep, user_in: UserRegisterRequest):
@@ -33,3 +37,8 @@ async def refresh_access_token(
         service: AuthServiceDep, request: TokenRefreshRequest
 ):
     return await service.refresh_access_token(request)
+
+
+@router.post("/register_not_protect", response_model=UserRegisterResponse)
+async def register(service: AuthServiceDep, user_in: UserRegisterRequest):
+    return await service.registration(user_in)
