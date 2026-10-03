@@ -23,7 +23,7 @@ class ChatService:
             new_chat_id = await self._repo.create_group_chat(
                 name=new_chat_request.chat_name,
                 description=new_chat_request.chat_description,
-                user=cur_user
+                cur_user_id=cur_user.user_id
             )
         except Exception as e:
             logger.warning(f"Group chat create error: {e}")

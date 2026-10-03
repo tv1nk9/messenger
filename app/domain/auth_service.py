@@ -41,7 +41,7 @@ class AuthService:
             logger.warning(f"Registration failed. Email '{user_in.email}' already exists")
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Username already exist",
+                detail="Email already exist",
             )
 
         return UserRegisterResponse(user_id=new_user_id)
