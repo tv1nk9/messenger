@@ -13,8 +13,7 @@ from app.web.websockets.conn_manager import manager
 router = APIRouter(prefix="/ws", tags=["ws"])
 
 async def _ws_auth(token: str | None) -> str | None:
-    """Достаёт user_id из access-токена. Браузер не может задать заголовок
-    Authorization при handshake WebSocket, поэтому токен приходит в query."""
+    """Достаёт user_id из access-токена"""
     if not token:
         return None
     payload = verify_token(token)
@@ -81,6 +80,6 @@ async def chat_ws(ws: WebSocket, chat_id: str, token: str = Query(...)):
 
                 await manager.broadcast_to_chat(chat_id, payload)
     except WebSocketDisconnect:
-        await manager.disconnect(ws, user_id, chat_id)
+        manager.disconnect(ws, user_id, chat_id)
         logger.info(f"WS disconnect: user={user_id}, chat={chat_id}")
 
