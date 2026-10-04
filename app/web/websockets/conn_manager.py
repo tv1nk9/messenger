@@ -20,7 +20,7 @@ class ConnectionManager:
 
     async def connect(self, ws: WebSocket, user_id: str, chat_id: str):
         await ws.accept()
-        self.user_to_ws[chat_id][user_id].add(websockets)
+        self.user_to_ws[chat_id][user_id].add(ws)
 
     def disconnect(self, ws: WebSocket, user_id: str, chat_id: str):
         chats = self.user_to_ws.get(chat_id)
