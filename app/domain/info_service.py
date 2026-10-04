@@ -47,9 +47,7 @@ class InfoService:
             users=response
         )
 
-    async def get_user_chats(
-            self, cur_user: CurrentUser
-    ) -> UserChatsResponse:
+    async def get_user_chats(self, cur_user: CurrentUser) -> UserChatsResponse:
         try:
             chats = await self._chat_repo.get_user_chats(
                 user_id=cur_user.user_id,
@@ -87,7 +85,6 @@ class InfoService:
                     chat_id=str(chat.chat_id),
                     chat_name=chat_name,
                     chat_type=chat_type,
-                    last_message=None,
                 )
             )
 
@@ -105,6 +102,17 @@ class InfoService:
                     content=m.content,
                     created_at=m.created_at,
                 )
+
+        # Сортировка чатов по времени последнего сообщения
+        response.sort(
+            key=lambda item: (
+                # 1. Сначала группируем: чаты с сообщениями (True) идут перед чатами без них (False)
+                item.last_message is not None,
+                # 2. Затем сортируем по времени (от новых к старым)
+                item.last_message.created_at if item.last_message else None
+            ),
+            reverse=True  # Обратный порядок: новые сообщения сверху
+        )
 
         return UserChatsResponse(
             chats=response

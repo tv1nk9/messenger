@@ -157,6 +157,20 @@ function normalizeChats(data) {
     return [];
 }
 
+function sortChats() {
+    chats.sort((a, b) => {
+        const aTime = a.lastMessage?.created_at ? new Date(a.lastMessage.created_at).getTime() : 0;
+        const bTime = b.lastMessage?.created_at ? new Date(b.lastMessage.created_at).getTime() : 0;
+
+        // Сортировка по убыванию: самые новые сверху
+        if (aTime !== bTime) {
+            return bTime - aTime;
+        }
+
+        // Если у обоих нет сообщений — сортируем по имени (стабильный порядок)
+        return (a.name || "").localeCompare(b.name || "");
+    });
+}
 
 function formattedTime(rawTime) {
     const safeTime = rawTime.replace(/(\.\d{3})\d+/, '$1');
@@ -171,6 +185,7 @@ function formattedTime(rawTime) {
 }
 
 function renderChats() {
+    sortChats()
     chatList.innerHTML = "";
 
     if (chats.length === 0) {
