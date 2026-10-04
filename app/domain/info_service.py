@@ -63,8 +63,10 @@ class InfoService:
 
         response = []
         for chat in chats:
+            chat_type = ""
             if isinstance(chat, GroupChatModel):
                 chat_name = chat.chat_name
+                chat_type = "group"
             elif isinstance(chat, PrivateChatModel):
                 # Название личного чата - это имя другого участника чата
                 other_user = (
@@ -76,6 +78,7 @@ class InfoService:
                     chat_name = "Delete user"
                 else:
                     chat_name = f"{other_user.name} {other_user.surname}"
+                    chat_type = "private"
             else:
                 continue
 
@@ -83,9 +86,25 @@ class InfoService:
                 UserChatItem(
                     chat_id=str(chat.chat_id),
                     chat_name=chat_name,
-                    last_message=None # ДОБАВИТЬ
+                    chat_type=chat_type,
+                    last_message=None,
                 )
             )
+
+        last_messages = await self._chat_repo.get_last_messages_for_chats(
+            [item.chat_id for item in response]
+        )
+        for item in response:
+            m = last_messages.get(item.chat_id)
+            if m is not None:
+                item.last_message = UserMessage(
+                    user_id=str(m.sender_id),
+                    username=(
+                        f"{m.sender.name} {m.sender.surname}" if m.sender else "Deleted user"
+                    ),
+                    content=m.content,
+                    created_at=m.created_at,
+                )
 
         return UserChatsResponse(
             chats=response

@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -53,6 +53,41 @@ class ChatRepository:
         private_res = await self._session.scalars(private_query)
 
         return list(group_res) + list(private_res)
+
+
+    async def get_last_messages_for_chats(
+            self, chat_ids: list[str]
+    ) -> dict[str, MessageModel]:
+        """Возвращает последнее сообщение для каждого чата из списка."""
+        if not chat_ids:
+            return {}
+
+        # Нумеруем сообщения по чатам от новых к старым...
+        row_number = (
+            func.row_number()
+            .over(
+                partition_by=MessageModel.chat_id,
+                order_by=(MessageModel.created_at.desc(), MessageModel.id.desc()),
+            )
+            .label("rn")
+        )
+
+        subq = (
+            select(MessageModel, row_number)
+            .where(MessageModel.chat_id.in_(chat_ids))
+            .subquery()
+        )
+
+        # ...и берём только первые строки (последние сообщения)
+        stmt = (
+            select(MessageModel)
+            .join(subq, subq.c.id == MessageModel.id)
+            .options(selectinload(MessageModel.sender))
+            .where(subq.c.rn == 1)
+        )
+
+        res = await self._session.scalars(stmt)
+        return {str(m.chat_id): m for m in res}
 
 
     async def create_group_chat(

@@ -105,14 +105,15 @@ class ChatHistoryResponse(BaseModel):
 #     chats: list[ChatInfo]
 
 
-class UserChatsResponse(BaseModel):
-    chats: list[UserChatItem]
-
 class UserChatItem(BaseModel):
     chat_id: str
     chat_name: str
-    last_message: UserMessage | None
+    chat_type: str
+    last_message: UserMessage | None = None
     # last_message_at: datetime.datetime | None
+
+class UserChatsResponse(BaseModel):
+    chats: list[UserChatItem]
 
 
 class FindUserRequest(BaseModel):
