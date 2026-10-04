@@ -5,6 +5,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from app.core.security import verify_token
+from app.db.models import UserModel
 from app.db.repositories.chat_repos import ChatRepository
 from app.db.session import session_factory
 from app.web.schemas import SendMessage
@@ -66,6 +67,7 @@ async def chat_ws(ws: WebSocket, chat_id: str, token: str = Query(...)):
                     recipient_id=recipient_id,
                     content=data.content,
                 )
+                sender = await session.get(UserModel, message.sender_id) if message.sender_id else None
 
                 payload = {
                     "event": "new_message",
@@ -73,12 +75,18 @@ async def chat_ws(ws: WebSocket, chat_id: str, token: str = Query(...)):
                         "id": str(message.id),
                         "chat_id": str(message.chat_id),
                         "user_id": str(message.sender_id),
+                        "username": f"{sender.name} {sender.surname}" if sender else None,
                         "content": message.content,
                         "created_at": message.created_at.isoformat(),
                     },
                 }
 
                 await manager.broadcast_to_chat(chat_id, payload)
+                await manager.notify_chat_updated(
+                    chat_id=chat_id,
+                    sender_id=user_id,
+                    message=payload["message"]
+                )
     except WebSocketDisconnect:
         manager.disconnect(ws, user_id, chat_id)
         logger.info(f"WS disconnect: user={user_id}, chat={chat_id}")
