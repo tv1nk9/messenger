@@ -7,6 +7,7 @@ from app.db.models import (
     ChatModel,
     GroupChatMemberModel,
     GroupChatModel,
+    MessageModel,
     PrivateChatModel,
 )
 
@@ -15,12 +16,33 @@ class ChatRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
+    # async def get_messages_group_chat(
+    #         self, chat_id: str
+    # ):
+    #     pass
+    #
+    # async def save_message(
+    #         self,
+    #         user_id: str,
+    #         chat_id: str,
+    #         content: str,
+    # ) -> datetime.datetime:
+    #     new_message = MessageModel(
+    #         chat_id=chat_id,
+    #         sender_id=user_id,
+    #         content=content
+    #     )
+    #     self._session.add(new_message)
+    #     await self._session.commit()
+    #
+    #     return new_message.created_at
+
     async def get_user_chats(
             self, user_id: str
     ) -> list[ChatModel]:
         """ Возвращает список текущих чатов пользователя """
 
-        # Собираем групповые чаты в которых состоит пользователь
+        # Собираем групповые чаты
         group_query = (
             select(GroupChatModel)
             .join(
@@ -32,7 +54,7 @@ class ChatRepository:
             )
         )
 
-        # Собираем личные чаты в которых состоит пользователь
+        # Собираем личные чаты
         private_query = (
             select(PrivateChatModel)
             .options(
@@ -94,3 +116,65 @@ class ChatRepository:
         await self._session.commit()
 
         return str(new_chat.chat_id)
+
+    async def is_user_in_chat(self, user_id: str, chat_id: str) -> bool:
+        """Проверяет, является ли пользователь участником чата (группа или приват)."""
+        group_exists = await self._session.scalar(
+            select(GroupChatMemberModel.chat_id)
+            .where(
+                GroupChatMemberModel.chat_id == chat_id,
+                GroupChatMemberModel.user_id == user_id,
+            )
+            .limit(1)
+        )
+        if group_exists is not None:
+            return True
+
+        private_exists = await self._session.scalar(
+            select(PrivateChatModel.chat_id)
+            .where(
+                PrivateChatModel.chat_id == chat_id,
+                or_(
+                    PrivateChatModel.user_1_id == user_id,
+                    PrivateChatModel.user_2_id == user_id,
+                ),
+            )
+            .limit(1)
+        )
+        return private_exists is not None
+
+    async def get_private_chat_recipient_id(self, user_id: str, chat_id: str) -> str | None:
+        """Для приватного чата возвращает id собеседника (recipient для сообщения)."""
+        chat = await self._session.get(PrivateChatModel, chat_id)
+        if chat is None:
+            return None
+        if str(chat.user_1_id) == str(user_id):
+            return str(chat.user_2_id) if chat.user_2_id else None
+        return str(chat.user_1_id) if chat.user_1_id else None
+
+    async def create_message(
+            self,
+            chat_id: str,
+            sender_id: str,
+            recipient_id: str | None,
+            content: str,
+    ) -> MessageModel:
+        message = MessageModel(
+            chat_id=chat_id,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            content=content,
+        )
+        self._session.add(message)
+        await self._session.commit()
+        await self._session.refresh(message)
+        return message
+
+    async def get_chat_history(self, chat_id: str, limit: int = 50) -> list[MessageModel]:
+        res = await self._session.scalars(
+            select(MessageModel)
+            .where(MessageModel.chat_id == chat_id)
+            .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+            .limit(limit)
+        )
+        return list(res)[::-1]
