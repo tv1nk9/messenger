@@ -1,3 +1,5 @@
+import datetime
+
 from fastapi import HTTPException, status
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,8 @@ from app.web.schemas import (
     GroupChatCreateResponse,
     PrivateChatCreateRequest,
     PrivateChatCreateResponse,
+    SendMessage,
+    UserMessage,
 )
 
 
@@ -58,3 +62,28 @@ class ChatService:
 
     async def add_user_to_group_chat(self):
         pass
+
+    async def get_messages(
+            self, cur_user: CurrentUser
+    ) -> list[UserMessage]:
+        pass
+
+    async def send_message(
+            self,
+            cur_user: CurrentUser,
+            message: SendMessage,
+    ) -> datetime.datetime:
+        try:
+            time = await self._repo.save_message(
+                user_id=cur_user.user_id,
+                chat_id=message.chat_id,
+                content=message.content
+            )
+        except Exception:
+            logger.warning(f"Send message failed: {f}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Send message failed"
+            )
+
+        return time

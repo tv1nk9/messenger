@@ -11,6 +11,7 @@ from app.web.schemas import (
     FindUsersResponse,
     UserChatItem,
     UserChatsResponse,
+    UserMessage,
 )
 
 
@@ -67,7 +68,7 @@ class InfoService:
                 # Название личного чата - это имя другого участника чата
                 other_user = (
                     chat.user_2
-                    if chat.user_1_id == cur_user.user_id
+                    if str(chat.user_1_id) == cur_user.user_id
                     else chat.user_1
                 )
                 if other_user is None:
@@ -87,4 +88,31 @@ class InfoService:
 
         return UserChatsResponse(
             chats=response
+        )
+
+
+    async def get_chat_history(
+            self, cur_user: CurrentUser, chat_id: str, limit: int = 50
+    ) -> ChatHistoryResponse:
+        """История сообщений чата. Доступна только участникам чата."""
+        if not await self._chat_repo.is_user_in_chat(cur_user.user_id, chat_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not a member of this chat",
+            )
+
+        messages = await self._chat_repo.get_chat_history(chat_id, limit=limit)
+
+        return ChatHistoryResponse(
+            messages=[
+                UserMessage(
+                    user_id=str(m.sender_id),
+                    username=(
+                        f"{m.sender.name} {m.sender.surname}" if m.sender else "Deleted user"
+                    ),
+                    content=m.content,
+                    created_at=m.created_at,
+                )
+                for m in messages
+            ]
         )
