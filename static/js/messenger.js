@@ -7,7 +7,7 @@ const API = {
     userChats: "/api/v1/info/user_chats",
     createGroup: "/api/v1/chat/create_group_chat",
     findUsers: "/api/v1/info/find_user",
-    createPrivate: "/api/v1/chat/create_private_chat"
+    createPrivate: "/api/v1/chat/create_private_chat",
     chatHistory: "/api/v1/info/chat_history"
 };
 
@@ -19,7 +19,7 @@ const API = {
 let chats = [];
 let selectedChatId = null;
 let searchTimeout = null;
-let currentUser = null; // из JWT (sub) — для разделения "своих"/"чужих" сообщений
+let currentUserId = null; // из JWT (sub) — для разделения "своих"/"чужих" сообщений
 
 /*
  * ==========================================================
@@ -42,7 +42,7 @@ const groupError = document.getElementById("group-error");
 const logoutButton = document.getElementById("logout-btn");
 const messageForm = document.getElementById("message-form");
 const messageInput = document.getElementById("message-input");
-const messageSendBtn = document.getElementById("message=send-btn");
+const messageSendBtn = document.getElementById("message-send-btn");
 
 /*
  * ==========================================================
@@ -511,7 +511,7 @@ function appendMessage(msg) {
 
     const element = document.createElement("div");
     const mine = String(msg.user_id) === String(currentUserId);
-    element.className = `message ${mine ? "message-out" : "message-in"}`;
+    element.className = `message ${mine ? "outgoing" : "incoming"}`;
 
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     element.innerHTML = `

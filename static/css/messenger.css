@@ -225,17 +225,21 @@ body {
     text-align: center;
 }
 
+/* Обёртка сообщения — на всю ширину */
 .message {
-    max-width: 65%;
+    width: 100%;
+    display: flex;
     margin-bottom: 14px;
 }
 
+/* Чужие — прижимаем пузырёк влево */
 .message.incoming {
-    margin-right: auto;
+    justify-content: flex-start;
 }
 
+/* Мои — прижимаем пузырёк вправо */
 .message.outgoing {
-    margin-left: auto;
+    justify-content: flex-end;
 }
 
 .message-author {
@@ -244,8 +248,9 @@ body {
     color: #6c757d;
 }
 
+/* Пузырёк — ограничен по ширине, но не на весь экран */
 .message-bubble {
-    display: inline-block;
+    max-width: 65%;
     padding: 9px 13px;
     border-radius: 14px;
     background: #ffffff;
@@ -254,6 +259,11 @@ body {
 .message.outgoing .message-bubble {
     background: #0d6efd;
     color: #ffffff;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    margin-top: 4px;
 }
 
 /* =========================
