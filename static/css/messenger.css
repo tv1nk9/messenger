@@ -145,6 +145,12 @@ body {
     text-overflow: ellipsis;
 }
 
+.last-message-time {
+    font-size: 0.78rem;
+    color: #6c757d;
+    text-align: right;
+}
+
 /* =========================
    SIDEBAR FOOTER
    ========================= */

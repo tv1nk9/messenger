@@ -157,6 +157,19 @@ function normalizeChats(data) {
     return [];
 }
 
+
+function formattedTime(rawTime) {
+    const safeTime = rawTime.replace(/(\.\d{3})\d+/, '$1');
+    const date = new Date(safeTime);
+    const formatted = date.toLocaleString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit'
+    });
+    return formatted;
+}
+
 function renderChats() {
     chatList.innerHTML = "";
 
@@ -173,10 +186,14 @@ function renderChats() {
         }
 
         let previewText = getChatTypeText(chat.type);
+        let previewTime = "Сообщений нет"
         if (chat.lastMessage) {
             const mine = String(chat.lastMessage.user_id) == String(currentUserId);
             const text = chat.lastMessage.content;
-            previewText = mine ? `Вы: ${text}` : text;
+            const time = formattedTime(chat.lastMessage.created_at);
+
+            previewText = mine ? `Вы: ${text}` : `${text}`;
+            previewTime = time ? time : `Сообщений нет`;
         }
 
         element.innerHTML = `
@@ -184,7 +201,10 @@ function renderChats() {
             <div class="chat-info">
                 <div class="chat-name">${escapeHtml(chat.name)}</div>
                 <div class="chat-last-message text-truncate">${escapeHtml(previewText)}</div>
+                <div class="last-message-time">${escapeHtml(previewTime)}</div>
             </div>`;
+        previewText = null;
+        previewTime = null;
 
         element.addEventListener("click", () => openChat(chat));
         chatList.appendChild(element);
