@@ -85,15 +85,27 @@ async function apiFetch(url, options = {}) {
  * ==========================================================
  */
 async function loadChats() {
-    chatList.innerHTML = `<div class="chat-empty">Загрузка чатов...</div>`;
+    if (chats.length === 0 && !chatList.querySelector(".chat-item")) {
+        chatList.innerHTML = `<div class="chat-empty">Загрузка чатов...</div>`;
+    }
 
     try {
         const response = await apiFetch(API.userChats, { method: "GET" });
         if (!response.ok) throw new Error("Не удалось получить список чатов");
 
         const data = await response.json();
+        const oldChatIds = new Set(chats.map(c => String(c.id)));
         chats = normalizeChats(data.chats);
         renderChats();
+
+        // Если в списке появился новый чат (например, собеседник создал
+        // личный чат) — мгновенно подтягиваем его историю и обновляем превью,
+        // чтобы он не оставался "пустым" до перезагрузки страницы.
+        for (const chat of chats) {
+            if (!oldChatIds.has(String(chat.id))) {
+                refreshChatPreviewFromHistory(chat);
+            }
+        }
     } catch (error) {
         console.error(error);
         chatList.innerHTML = `
@@ -101,6 +113,23 @@ async function loadChats() {
                 Не удалось загрузить чаты.<br>
                 <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadChats()">Повторить</button>
             </div>`;
+    }
+}
+
+// Подтягиваем последнее сообщение чата из истории (REST) и обновляем превью
+async function refreshChatPreviewFromHistory(chat) {
+    try {
+        const response = await apiFetch(`${API.chatHistory}/${chat.id}?limit=1`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const messagesList = data.messages || [];
+        const last = messagesList[messagesList.length - 1];
+        if (last) {
+            chat.lastMessage = last;
+            renderChats();
+        }
+    } catch (error) {
+        console.error(error);
     }
 }
 
@@ -163,7 +192,14 @@ function renderChats() {
 }
 
 async function openChat(chat) {
+    const previousChatId = selectedChatId;
     selectedChatId = chat.id;
+
+    closeListSocket(chat.id);
+    if (previousChatId && String(previousChatId) !== String(chat.id)) {
+        ensureListSockets();
+    }
+
     welcome.style.display = "none";
     chatWindow.style.display = "flex";
 
@@ -424,6 +460,107 @@ let wsReconnectTimer = null;
 let wsReconnectDelay = 1000;      // экспоненциальная задержка: 1s, 2s, 4s ... max 30s
 let intentionalClose = false;
 
+let listSockets = new Map();      // chat_id -> WebSocket (одно фоновое соединение на чат)
+const LIST_WS_MAX = 3;            // не держим больше трёх фоновых соединений
+
+// Фоновые WebSocket-соединения: подписываемся на несколько чатов из списка,
+// чтобы получать события chat_updated / new_message (чаты, которые сейчас
+// открыты у собеседника) и мгновенно обновлять превью и состав списка.
+function ensureListSockets() {
+    if (!currentUserId || chats.length === 0) return;
+
+    const candidates = chats
+        .map(c => String(c.id))
+        .filter(id => String(id) !== String(selectedChatId))
+        .slice(0, LIST_WS_MAX);
+
+    // закрываем фоновые соединения за пределами текущего лимита/выбора
+    for (const id of Array.from(listSockets.keys())) {
+        if (!candidates.includes(String(id))) {
+            closeListSocket(id);
+        }
+    }
+
+    for (const id of candidates) {
+        const existing = listSockets.get(id);
+        if (existing && !existing.closedByUs &&
+            (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+            continue; // уже подключены
+        }
+        connectListSocket(id);
+    }
+}
+
+function connectListSocket(chatId) {
+    closeListSocket(chatId);
+
+    const socket = new WebSocket(wsUrl(chatId));
+    socket.closedByUs = false;
+    listSockets.set(chatId, socket);
+
+    socket.onmessage = (event) => {
+        // игнорируем сообщения, если это соединение уже заменено новым
+        if (listSockets.get(String(chatId)) !== socket) return;
+        let data;
+        try { data = JSON.parse(event.data); } catch (e) { return; }
+
+        if (data.event === "chat_updated") {
+            applyChatUpdate(data.chat_id, data.last_message);
+        } else if (data.event === "new_message") {
+            applyChatUpdate(data.message.chat_id, data.message);
+        } else if (data.event === "error") {
+            console.error("WS(list):", data.detail);
+        }
+    };
+
+    socket.onclose = () => {
+        if (listSockets.get(String(chatId)) === socket) {
+            listSockets.delete(String(chatId));
+        }
+        if (socket.closedByUs) return;
+        // переподключение — только если чат всё ещё в списке и не выбран
+        setTimeout(() => {
+            const stillCandidate = chats.some(c => String(c.id) === String(chatId)) &&
+                String(selectedChatId) !== String(chatId);
+            if (stillCandidate && !listSockets.has(String(chatId))) {
+                connectListSocket(chatId);
+            }
+        }, 5000 + Math.random() * 5000);
+    };
+
+    socket.onerror = () => { /* onclose отработает следом */ };
+}
+
+function closeListSocket(chatId) {
+    const socket = listSockets.get(String(chatId));
+    if (socket) {
+        socket.closedByUs = true;
+        socket.close();
+        listSockets.delete(String(chatId));
+    }
+}
+
+function closeAllListSockets() {
+    for (const id of Array.from(listSockets.keys())) {
+        closeListSocket(id);
+    }
+}
+
+// Быстрое обновление превью известного чата без REST-запроса;
+// если чата в списке нет (собеседник создал новый) — перезагружаем список
+function applyChatUpdate(chatId, lastMessage) {
+    const chat = chats.find(item => String(item.id) === String(chatId));
+    if (chat) {
+        if (lastMessage) {
+            chat.lastMessage = lastMessage;
+            renderChats();
+        }
+        return;
+    }
+    // Новый чат (например, собеседник создал с нами личный чат)
+    loadChats().then(ensureListSockets);
+}
+
 function parseJwtPayload(token) {
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -536,10 +673,8 @@ function appendMessage(msg) {
 
 // Обновляем превью последнего сообщения в списке чатов без перезагрузки
 function updateChatPreview(msg) {
-    const chat = chats.find(item => String(item.id) === String(selectedChatId));
-    if (!chat || !msg) return;
-    chat.lastMessage = msg;
-    renderChats();
+    if (!msg) return;
+    applyChatUpdate(msg.chat_id || selectedChatId, msg);
 }
 
 messageForm.addEventListener("submit", (event) => {
@@ -560,7 +695,17 @@ async function init() {
     const payload = parseJwtPayload(token);
     currentUserId = payload ? payload.sub : null
     await loadChats();
+    // фоновые подписки: мгновенные обновления списка чатов без перезагрузки
+    ensureListSockets();
 }
+
+// Обновляем список, когда пользователь возвращается на вкладку
+// (пока вкладка была невидима, WebSocket-события могли потеряться)
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && currentUserId) {
+        loadChats().then(ensureListSockets);
+    }
+});
 
 // Запуск при загрузке DOM
 document.addEventListener("DOMContentLoaded", init);
