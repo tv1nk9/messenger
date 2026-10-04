@@ -3,7 +3,12 @@ from fastapi.responses import HTMLResponse
 
 from app.main import templates
 from app.web.deps import CurrentUserDep, InfoServiceDep
-from app.web.schemas import FindUserRequest, FindUsersResponse, UserChatsResponse
+from app.web.schemas import (
+    ChatHistoryResponse,
+    FindUserRequest,
+    FindUsersResponse,
+    UserChatsResponse,
+)
 
 router = APIRouter(prefix="/info", tags=["info"])
 
@@ -22,3 +27,12 @@ async def user_chats(
         service: InfoServiceDep, cur_user: CurrentUserDep
 ):
     return await service.get_user_chats(cur_user)
+
+@router.get("/chat_history/{chat_id}", response_model=ChatHistoryResponse)
+async def chat_history(
+        chat_id: str,
+        service: InfoServiceDep,
+        cur_user: CurrentUserDep,
+        limit: int = 50,
+):
+    return await service.get_chat_history(cur_user, chat_id, limit)
