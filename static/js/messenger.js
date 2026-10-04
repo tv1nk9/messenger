@@ -8,6 +8,7 @@ const API = {
     createGroup: "/api/v1/chat/create_group_chat",
     findUsers: "/api/v1/info/find_user",
     createPrivate: "/api/v1/chat/create_private_chat"
+    chatHistory: "/api/v1/info/chat_history"
 };
 
 /*
@@ -18,6 +19,7 @@ const API = {
 let chats = [];
 let selectedChatId = null;
 let searchTimeout = null;
+let currentUser = null; // из JWT (sub) — для разделения "своих"/"чужих" сообщений
 
 /*
  * ==========================================================
@@ -38,6 +40,9 @@ const createGroupForm = document.getElementById("create-group-form");
 const createGroupSubmit = document.getElementById("create-group-submit");
 const groupError = document.getElementById("group-error");
 const logoutButton = document.getElementById("logout-btn");
+const messageForm = document.getElementById("message-form");
+const messageInput = document.getElementById("message-input");
+const messageSendBtn = document.getElementById("message=send-btn");
 
 /*
  * ==========================================================
@@ -148,7 +153,7 @@ function renderChats() {
     });
 }
 
-function openChat(chat) {
+async function openChat(chat) {
     selectedChatId = chat.id;
     welcome.style.display = "none";
     chatWindow.style.display = "flex";
@@ -157,13 +162,22 @@ function openChat(chat) {
     chatHeaderName.textContent = chat.name;
     chatHeaderType.textContent = getChatTypeText(chat.type);
 
-    messages.innerHTML = `
-        <div class="messages-empty">
-            <div>
-                <div class="mb-2">Чат «${escapeHtml(chat.name)}» выбран.</div>
-                <small>Загрузка сообщений будет подключена после реализации API сообщений.</small>
-            </div>
-        </div>`;
+    setComposerEnabled(false);
+    messages.innerHTML = `<div class="messages-empty">Загрузка сообщений...</div>`;
+
+    // 1. Подтягиваем историю через REST
+    try {
+        const response = await apiFetch(`${API.chatHistory}/${chat.id}?limit=50`);
+        if (!response.ok) throw new Error("Не удалось загрузить историю");
+        const data = await response.json();
+        renderMessages(data.messages || []);
+    } catch (error) {
+        console.error(error);
+        messages.innerHTML = `<div class="messages-empty">Не удалось загрузить сообщения.</div>`;
+    }
+
+    // 2. Открываем WebSocket для реалтайма
+    connectWebSocket(chat.id);
 
     renderChats();
     messenger.classList.add("show-chat"); // Для мобильной версии
@@ -390,11 +404,143 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
+
+/*
+ * ==========================================================
+ * WEBSOCKET (REALTIME)
+ * ==========================================================
+ */
+let ws = null;
+let wsReconnectTimer = null;
+let wsReconnectDelay = 1000;      // экспоненциальная задержка: 1s, 2s, 4s ... max 30s
+let intentionalClose = false;
+
+function parseJwtPayload(token) {
+    try {
+        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        return JSON.parse(atob(base64));
+    } catch (e) {
+        return null;
+    }
+}
+
+function wsUrl(chatId) {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.host}/api/v1/ws/chat/${chatId}?token=${encodeURIComponent(getToken())}`;
+}
+
+function connectWebSocket(chatId) {
+    disconnectWebSocket();          // закрываем соединение предыдущего чата
+    intentionalClose = false;
+    wsReconnectDelay = 1000;
+
+    ws = new WebSocket(wsUrl(chatId));
+
+    ws.onopen = () => {
+        wsReconnectDelay = 1000;
+        setComposerEnabled(true);
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.event === "new_message") {
+            appendMessage(data.message);
+        } else if (data.event === "error") {
+            console.error("WS:", data.detail);
+        }
+    };
+
+    ws.onclose = (event) => {
+        setComposerEnabled(false);
+        // 1008 — не авторизован / не участник чата: переподключаться бессмысленно
+        if (intentionalClose || event.code === 1008) return;
+        scheduleReconnect(chatId);
+    };
+
+    ws.onerror = () => { /* onclose отработает следом */ };
+}
+
+function scheduleReconnect(chatId) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(() => {
+        // чат мог смениться, пока ждали таймер
+        if (selectedChatId && String(selectedChatId) === String(chatId)) {
+            connectWebSocket(chatId);
+        }
+    }, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
+}
+
+function disconnectWebSocket() {
+    if (ws) {
+        intentionalClose = true;
+        ws.close();
+        ws = null;
+    }
+    clearTimeout(wsReconnectTimer);
+}
+
+function setComposerEnabled(enabled) {
+    messageInput.disabled = !enabled;
+    messageSendBtn.disabled = !enabled;
+    if (enabled) messageInput.focus();
+}
+
+function sendMessage(content) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({
+        chat_id: selectedChatId,
+        user_id: currentUserId,
+        content: content
+    }));
+    return true;
+}
+
+function renderMessages(list) {
+    messages.innerHTML = "";
+    if (!list.length) {
+        messages.innerHTML = `<div class="messages-empty">Сообщений пока нет. Напишите первым!</div>`;
+        return;
+    }
+    list.forEach(appendMessage);
+}
+
+function appendMessage(msg) {
+    const empty = messages.querySelector(".messages-empty");
+    if (empty) empty.remove();
+
+    const element = document.createElement("div");
+    const mine = String(msg.user_id) === String(currentUserId);
+    element.className = `message ${mine ? "message-out" : "message-in"}`;
+
+    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    element.innerHTML = `
+        <div class="message-bubble">
+            ${mine ? "" : `<div class="message-author fw-semibold small">${escapeHtml(msg.username || "")}</div>`}
+            <div>${escapeHtml(msg.content)}</div>
+            <div class="message-time small text-muted text-end">${time}</div>
+        </div>`;
+    messages.appendChild(element);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+messageForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const content = messageInput.value.trim();
+    if (!content) return;
+    if (sendMessage(content)) {
+        messageInput.value = "";
+    }
+});
+
 async function init() {
-    if (!getToken()) {
+    const token = getToken();
+    if (!token) {
         redirectToLogin();
         return;
     }
+    const payload = parseJwtPayload(token);
+    currentUserId = payload ? payload.sub : null
     await loadChats();
 }
 
