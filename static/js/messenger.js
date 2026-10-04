@@ -284,7 +284,7 @@ async function createPrivateChat(userId) {
         const response = await apiFetch(API.createPrivate, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: userId })
+            body: JSON.stringify({ user_2_id: userId })
         });
 
         if (!response.ok) {
