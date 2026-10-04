@@ -153,6 +153,7 @@ class ChatRepository:
         res = await self._session.scalars(
             select(MessageModel)
             .where(MessageModel.chat_id == chat_id)
+            .options(selectinload(MessageModel.sender))
             .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
             .limit(limit)
         )

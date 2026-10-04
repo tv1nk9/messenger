@@ -12,6 +12,7 @@ from app.web.schemas import (
     UserChatItem,
     UserChatsResponse,
     UserMessage,
+    ChatHistoryResponse
 )
 
 
