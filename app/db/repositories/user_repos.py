@@ -1,4 +1,4 @@
-from sqlalchemy import select, Sequence
+from sqlalchemy import Sequence, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import UserModel, UserRole
@@ -43,19 +43,20 @@ class UserRepository:
 
     async def get_users_by_filters(
             self,
-            name: str | None,
-            surname: str | None,
-            patronymic: str | None
+            user_info: list[str]
     ) -> Sequence[UserRole]:
         limit = 10
         query = select(UserModel)
 
-        if name:
-            query = query.where(UserModel.name == name)
-        if surname:
-            query = query.where(UserModel.surname == surname)
-        if patronymic:
-            query = query.where(UserModel.patronymic == patronymic)
+        for el in user_info:
+            pattern = f"%{el}%"
+            query = query.filter(
+                or_(
+                    UserModel.name.ilike(pattern),
+                    UserModel.surname.ilike(pattern),
+                    UserModel.patronymic.ilike(pattern),
+                )
+            )
 
         res = await self._session.execute(query.limit(limit))
 

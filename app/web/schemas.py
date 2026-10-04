@@ -113,9 +113,7 @@ class UserChatItem(BaseModel):
 
 class FindUserRequest(BaseModel):
     """ Поиск пользователя по ФИО """
-    name: str
-    surname: str
-    patronymic: str | None
+    query: str
 
 
 class FindUsersResponse(BaseModel):

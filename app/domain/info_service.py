@@ -22,12 +22,13 @@ class InfoService:
     async def find_users(
             self,find_users_req: FindUserRequest
     ) -> FindUsersResponse:
+
+        user_info = find_users_req.query.split()
+        if not user_info:
+            return FindUsersResponse(users=None)
+
         try:
-            users = await self._user_repo.get_users_by_filters(
-                name=find_users_req.name,
-                surname=find_users_req.surname,
-                patronymic=find_users_req.patronymic
-            )
+            users = await self._user_repo.get_users_by_filters(user_info=user_info)
         except Exception as e:
             logger.warning(f"Find users error: {e}")
             raise HTTPException(

@@ -6,7 +6,7 @@
 const API = {
     userChats: "/api/v1/info/user_chats",
     createGroup: "/api/v1/chat/create_group_chat",
-    findUsers: "/api/v1/users/find_users",
+    findUsers: "/api/v1/info/find_user",
     createPrivate: "/api/v1/chat/create_private_chat"
 };
 
@@ -187,24 +187,29 @@ userSearch.addEventListener("input", () => {
 });
 
 async function searchUsers(query) {
-    const parts = query.split(/\s+/).filter(Boolean);
-    const params = new URLSearchParams();
-
-    if (parts[0]) params.set("name", parts[0]);
-    if (parts[1]) params.set("surname", parts[1]);
-    if (parts[2]) params.set("patronymic", parts[2]);
-
     try {
-        const response = await apiFetch(`${API.findUsers}?${params.toString()}`, { method: "GET" });
-        if (!response.ok) throw new Error("Ошибка поиска пользователей");
+        const response = await apiFetch(API.findUsers, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query: query })
+        });
+
+        if (!response.ok) {
+            throw new Error("Ошибка поиска пользователей");
+        }
 
         const data = await response.json();
+
         renderSearchResults(normalizeUsers(data.users));
+
     } catch (error) {
-        console.error(error);
+        console.error("Search error:", error);
         renderSearchMessage("Ошибка поиска пользователей");
     }
 }
+
 
 function normalizeUsers(data) {
     if (data && typeof data === "object" && !Array.isArray(data)) {
