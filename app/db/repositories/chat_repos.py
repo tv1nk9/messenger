@@ -16,27 +16,6 @@ class ChatRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    # async def get_messages_group_chat(
-    #         self, chat_id: str
-    # ):
-    #     pass
-    #
-    # async def save_message(
-    #         self,
-    #         user_id: str,
-    #         chat_id: str,
-    #         content: str,
-    # ) -> datetime.datetime:
-    #     new_message = MessageModel(
-    #         chat_id=chat_id,
-    #         sender_id=user_id,
-    #         content=content
-    #     )
-    #     self._session.add(new_message)
-    #     await self._session.commit()
-    #
-    #     return new_message.created_at
-
     async def get_user_chats(
             self, user_id: str
     ) -> list[ChatModel]:
