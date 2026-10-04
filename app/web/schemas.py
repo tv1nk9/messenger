@@ -84,6 +84,10 @@ class PrivateChatCreateResponse(BaseModel):
     chat_id: str
 
 
+class ChatHistoryResponse(BaseModel):
+    messages: list[UserMessage]
+
+
 # class ChatConnectRequest(BaseModel):
 #     chat_name: str = Field(
 #         min_length=chat_config.MIN_LENGTH_CHAT_NAME,
