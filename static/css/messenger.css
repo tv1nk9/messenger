@@ -137,6 +137,14 @@ body {
     color: #6c757d;
 }
 
+.chat-last-message {
+    font-size: 0.78rem;
+    color: #6c757d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* =========================
    SIDEBAR FOOTER
    ========================= */

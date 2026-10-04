@@ -111,7 +111,8 @@ function normalizeChats(data) {
         return data.map(chat => ({
             id: String(chat.chat_id),
             type: chat.chat_type,
-            name: chat.chat_name
+            name: chat.chat_name,
+            lastMessage: chat.last_message || null
         }));
     }
 
@@ -119,7 +120,8 @@ function normalizeChats(data) {
         return Object.entries(data).map(([chatId, chatName]) => ({
             id: chatId,
             type: "unknown",
-            name: chatName
+            name: chatName,
+            lastMessage: null
         }));
     }
 
@@ -141,11 +143,18 @@ function renderChats() {
             element.classList.add("active");
         }
 
+        let previewText = getChatTypeText(chat.type);
+        if (chat.lastMessage) {
+            const mine = String(chat.lastMessage.user_id) == String(currentUserId);
+            const text = chat.lastMessage.content;
+            previewText = mine ? `Вы: ${text}` : text;
+        }
+
         element.innerHTML = `
             <div class="avatar">${escapeHtml(getInitials(chat.name))}</div>
             <div class="chat-info">
                 <div class="chat-name">${escapeHtml(chat.name)}</div>
-                <div class="chat-type">${escapeHtml(getChatTypeText(chat.type))}</div>
+                <div class="chat-last-message text-truncate">${escapeHtml(previewText)}</div>
             </div>`;
 
         element.addEventListener("click", () => openChat(chat));
@@ -445,6 +454,7 @@ function connectWebSocket(chatId) {
         const data = JSON.parse(event.data);
         if (data.event === "new_message") {
             appendMessage(data.message);
+            updateChatPreview(data.message);
         } else if (data.event === "error") {
             console.error("WS:", data.detail);
         }
@@ -522,6 +532,14 @@ function appendMessage(msg) {
         </div>`;
     messages.appendChild(element);
     messages.scrollTop = messages.scrollHeight;
+}
+
+// Обновляем превью последнего сообщения в списке чатов без перезагрузки
+function updateChatPreview(msg) {
+    const chat = chats.find(item => String(item.id) === String(selectedChatId));
+    if (!chat || !msg) return;
+    chat.lastMessage = msg;
+    renderChats();
 }
 
 messageForm.addEventListener("submit", (event) => {
