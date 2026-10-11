@@ -75,6 +75,10 @@ class GroupChatCreateRequest(BaseModel):
 class GroupChatCreateResponse(BaseModel):
     chat_id: str
 
+class AddUserGroupChat(BaseModel):
+    user_id: str
+    chat_id: str
+
 
 class PrivateChatCreateRequest(BaseModel):
     user_2_id: str
