@@ -1,30 +1,28 @@
-import datetime
-
 from fastapi import HTTPException, status
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.chat_repos import ChatRepository
+from app.db.repositories.user_repos import UserRepository
 from app.web.schemas import (
     CurrentUser,
     GroupChatCreateRequest,
     GroupChatCreateResponse,
     PrivateChatCreateRequest,
     PrivateChatCreateResponse,
-    SendMessage,
-    UserMessage,
 )
 
 
 class ChatService:
     def __init__(self, session: AsyncSession):
-        self._repo = ChatRepository(session)
+        self._chat_repo = ChatRepository(session)
+        self._user_repo = UserRepository(session)
 
     async def create_group_chat(
             self, new_chat_request: GroupChatCreateRequest, cur_user: CurrentUser
     ) -> GroupChatCreateResponse:
         try:
-            new_chat_id = await self._repo.create_group_chat(
+            new_chat_id = await self._chat_repo.create_group_chat(
                 name=new_chat_request.chat_name,
                 description=new_chat_request.chat_description,
                 cur_user_id=cur_user.user_id
@@ -46,7 +44,16 @@ class ChatService:
             cur_user: CurrentUser
     ):
         try:
-            new_chat_id = await self._repo.create_private_chat(
+            if await self._user_repo.get_user_by_id(
+                user_id=new_chat_request.user_2_id
+            ) is None:
+                logger.info(f"User 2 with id: '{new_chat_request.user_2_id}' not found")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User 2 not found",
+                )
+
+            new_chat_id = await self._chat_repo.create_private_chat(
                 cur_user_id=cur_user.user_id,
                 user_2_id=new_chat_request.user_2_id,
             )
@@ -62,28 +69,3 @@ class ChatService:
 
     async def add_user_to_group_chat(self):
         pass
-
-    async def get_messages(
-            self, cur_user: CurrentUser
-    ) -> list[UserMessage]:
-        pass
-
-    async def send_message(
-            self,
-            cur_user: CurrentUser,
-            message: SendMessage,
-    ) -> datetime.datetime:
-        try:
-            time = await self._repo.save_message(
-                user_id=cur_user.user_id,
-                chat_id=message.chat_id,
-                content=message.content
-            )
-        except Exception:
-            logger.warning(f"Send message failed: {f}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Send message failed"
-            )
-
-        return time
