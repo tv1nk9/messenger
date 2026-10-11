@@ -49,7 +49,7 @@ class UserRepository:
         query = select(UserModel)
 
         for el in user_info:
-            pattern = f"%{el}%"
+            pattern = f"{el}%"
             query = query.filter(
                 or_(
                     UserModel.name.ilike(pattern),
