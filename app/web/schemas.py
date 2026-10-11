@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from app.core.configs import chat_config, user_config
 from app.db.models import UserRole
@@ -41,8 +41,7 @@ class UserRegisterRequest(BaseModel):
         min_length=user_config.MIN_LENGTH_USERNAME,
         max_length=user_config.MAX_LENGTH_USERNAME
     )
-    email: str = Field(
-        min_length=4,
+    email: EmailStr = Field(
         max_length=32
     )
     password: str = Field(
