@@ -37,8 +37,3 @@ async def refresh_access_token(
         service: AuthServiceDep, request: TokenRefreshRequest
 ):
     return await service.refresh_access_token(request)
-
-
-@router.post("/register_not_protect", response_model=UserRegisterResponse)
-async def register(service: AuthServiceDep, user_in: UserRegisterRequest):
-    return await service.registration(user_in)
