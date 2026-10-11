@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from loguru import logger
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.chat_repos import ChatRepository
@@ -17,6 +18,7 @@ class ChatService:
     def __init__(self, session: AsyncSession):
         self._chat_repo = ChatRepository(session)
         self._user_repo = UserRepository(session)
+
 
     async def create_group_chat(
             self, new_chat_request: GroupChatCreateRequest, cur_user: CurrentUser
@@ -44,9 +46,9 @@ class ChatService:
             cur_user: CurrentUser
     ):
         try:
-            if await self._user_repo.get_user_by_id(
+            if not await self._user_repo.get_user_by_id(
                 user_id=new_chat_request.user_2_id
-            ) is None:
+            ):
                 logger.info(f"User 2 with id: '{new_chat_request.user_2_id}' not found")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -67,5 +69,50 @@ class ChatService:
             chat_id=new_chat_id
         )
 
-    async def add_user_to_group_chat(self):
+    async def add_user_to_group_chat(
+            self,
+            cur_user: CurrentUser,
+            invited_user_id: str,
+            chat_id: str,
+    ) -> bool:
+        try:
+
+            if not await self._chat_repo.is_user_in_chat(
+                user_id=cur_user.user_id,
+                chat_id=chat_id
+            ):
+                logger.warning(f"User '{cur_user.user_id}' not in chat='{chat_id}'")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not a member of this chat"
+                )
+            elif await self._chat_repo.is_user_in_chat(
+                user_id=invited_user_id,
+                chat_id=chat_id
+            ):
+                logger.warning(f"Invited user='{invited_user_id}' already in chat='{chat_id}'")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invited user already in chat"
+                )
+
+            await self._chat_repo.add_user_to_group_chat(
+                chat_id=chat_id,
+                invited_user_id=invited_user_id
+            )
+
+        except DBAPIError as e:
+            logger.warning(f"User add chat failed. Error='{e}'")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed"
+            )
+
+        return True
+
+
+    async def leave_group_chat(self):
+        pass
+
+    async def kick_user_from_group_chat(self):
         pass

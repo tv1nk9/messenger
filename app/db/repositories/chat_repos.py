@@ -16,6 +16,9 @@ class ChatRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
+    async def is_chat_exists(self, chat_id: str) -> bool:
+        pass
+
     async def get_user_chats(
             self, user_id: str
     ) -> list[ChatModel]:
@@ -113,6 +116,20 @@ class ChatRepository:
         await self._session.commit()
 
         return str(new_chat.chat_id)
+
+    async def add_user_to_group_chat(
+            self,
+            invited_user_id: str,
+            chat_id: str,
+    ):
+        new_member = GroupChatMemberModel(
+            chat_id=chat_id,
+            user_id=invited_user_id,
+            role=ChatMemberRole.MEMBER,
+        )
+
+        self._session.add(new_member)
+        await self._session.commit()
 
     async def create_private_chat(
             self,

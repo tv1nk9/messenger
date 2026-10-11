@@ -6,8 +6,7 @@ from app.web.schemas import (
     GroupChatCreateResponse,
     PrivateChatCreateRequest,
     PrivateChatCreateResponse,
-    SendMessage,
-    UserMessage,
+    AddUserGroupChat,
 )
 
 router = APIRouter(prefix="/chat", tags=["chats"])
@@ -30,3 +29,15 @@ async def create_private_chat(
         new_chat_request=req,
         cur_user=cur_user
     )
+
+@router.post("/add_user_to_chat")
+async def add_user_to_chat(
+        service: ChatServiceDep, cur_user: CurrentUserDep, req: AddUserGroupChat
+):
+    res: bool = await service.add_user_to_group_chat(
+        cur_user=cur_user,
+        invited_user_id=req.user_id,
+        chat_id=req.chat_id
+    )
+
+    return f"User add successfully" if res else f"User add failed"
