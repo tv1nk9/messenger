@@ -30,4 +30,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
-logger.info("App start")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
