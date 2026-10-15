@@ -40,3 +40,25 @@ class AppSetting:
 
 
 settings = AppSetting()
+
+
+class APIPrefix:
+    CHAT_ROUTES: str = "/chat"
+    CREATE_GROUP_CHAT: str = "/create_group_chat"
+    CREATE_PRIVATE_CHAT: str = "/create_private_chat"
+    ADD_USER_TO_CHAT: str = "/add_user_to_chat"
+
+    AUTH_ROUTES: str = "/auth"
+    REGISTER: str = "/register"
+    LOGIN: str = "/login"
+    REFRESH_TOKEN: str = "/refresh"
+
+    INFO_ROUTES: str = "/info"
+    FIND_USER: str = "/find_user"
+    USER_CHATS: str = "/user_chats"
+    CHAT_HISTORY: str = "/chat_history"
+    """ /chat_history/{chat_id} """
+
+api_prefix = APIPrefix()
+
+
