@@ -5,7 +5,7 @@ import pytest
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
-    create_async_engine,
+    create_async_engine, async_sessionmaker,
 )
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 import app.db.models
 from app.db.models import Base, UserModel
 from app.core.security import get_password_hash, issue_tokens
-from app.db.session import get_session
+from app.db.session import get_session, session_factory
 from app.main import app
 
 
@@ -34,29 +34,23 @@ async def test_engine():
             await conn.run_sync(Base.metadata.drop_all)
         await test_engine.dispose()
 
-
 @pytest_asyncio.fixture(scope="function")
-async def db_connection(test_engine):
-    """ Открываем транзакцию с новым движком. Все изменения откатятся в конце теста """
+async def db_session(test_engine):
+    """ Создает сессию в транзакции, которая откатывается после теста """
     async with test_engine.connect() as conn:
         transaction = await conn.begin()
 
         try:
-            yield conn
+            async with AsyncSession(
+                bind=conn,
+                join_transaction_mode="create_savepoint",
+                expire_on_commit=False,
+            ) as session:
+                yield session
+
         finally:
             if transaction.is_active:
                 await transaction.rollback()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def db_session(db_connection):
-    """ Создаем сессию привязанную к транзакции тестовой бд """
-    async with AsyncSession(
-        bind=db_connection,
-        join_transaction_mode="create_savepoint",
-        expire_on_commit=False,
-    ) as session:
-        yield session
 
 
 @pytest_asyncio.fixture(scope="function")
