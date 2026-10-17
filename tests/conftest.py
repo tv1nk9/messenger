@@ -5,7 +5,7 @@ import pytest
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
-    create_async_engine, async_sessionmaker,
+    create_async_engine
 )
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 import app.db.models
 from app.db.models import Base, UserModel
 from app.core.security import get_password_hash, issue_tokens
-from app.db.session import get_session, session_factory
+from app.db.session import get_session
 from app.main import app
 
 
@@ -89,7 +89,7 @@ async def user_factory(db_session):
             password_hash=await get_password_hash(password),
         )
         db_session.add(user)
-        await db_session.commit()
+        await db_session.flush()
         await db_session.refresh(user)
 
         return user
