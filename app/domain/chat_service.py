@@ -92,7 +92,7 @@ class ChatService:
             ):
                 logger.warning(f"Invited user='{invited_user_id}' already in chat='{chat_id}'")
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=status.HTTP_409_CONFLICT,
                     detail="Invited user already in chat"
                 )
 

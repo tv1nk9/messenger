@@ -51,13 +51,12 @@ def generate_token(subject: str, role: UserRole, token_type: str, jti: str, ver:
 def issue_tokens(
     user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str
 ) -> None | dict:
-    if not user_id:
-        return None
-
+    """ Возвращает словарь формата: {"access_token": "....", "refresh_token": "...."} """
     return {
         "access_token": generate_token(user_id, role, "access", access_jti, ver),
         "refresh_token": generate_token(user_id, role, "refresh", refresh_jti, ver),
-    }
+    } if user_id else None
+
 
 async def verify_password(password_hash: str, password: str) -> bool:
     try:

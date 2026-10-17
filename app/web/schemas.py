@@ -75,7 +75,7 @@ class GroupChatCreateRequest(BaseModel):
 class GroupChatCreateResponse(BaseModel):
     chat_id: str
 
-class AddUserGroupChat(BaseModel):
+class AddUserGroupChatRequest(BaseModel):
     user_id: str
     chat_id: str
 
@@ -89,23 +89,6 @@ class PrivateChatCreateResponse(BaseModel):
 
 class ChatHistoryResponse(BaseModel):
     messages: list[UserMessage]
-
-
-# class ChatConnectRequest(BaseModel):
-#     chat_name: str = Field(
-#         min_length=chat_config.MIN_LENGTH_CHAT_NAME,
-#         max_length=chat_config.MAX_LENGTH_CHAT_NAME
-#     )
-#     user_id: str
-
-# class ChatInfo(BaseModel):
-#     chat_name: str
-#     chat_id: str
-#     created_by: str
-#     number_participants: str
-#
-# class FindChatResponse(BaseModel):
-#     chats: list[ChatInfo]
 
 
 class UserChatItem(BaseModel):
