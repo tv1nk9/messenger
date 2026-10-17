@@ -83,10 +83,7 @@ async def test_create_group_chat(
 
 @pytest.mark.asyncio
 async def test_create_group_chat_without_auth(client: AsyncClient):
-    resp = await client.post(
-        create_group_chat_url,
-        json=create_group_chat_request.model_dump(mode="json")
-    )
+    resp = await client.post(create_group_chat_url, json=create_group_chat_request.model_dump(mode="json"))
     assert resp.status_code == 401
 
 
@@ -101,9 +98,7 @@ async def test_add_user_to_group_chat(
     owner_user_headers = auth_headers_factory(owner_user)
     member_user = await user_factory(name="member")
 
-    chat_id = await _create_group_chat(
-        client, headers=owner_user_headers
-    )
+    chat_id = await _create_group_chat(client, headers=owner_user_headers)
     resp = await client.post(
         add_user_to_chat_url,
         headers=owner_user_headers,
@@ -120,6 +115,38 @@ async def test_add_user_to_group_chat(
     )
     member_ids = {item.user_id for item in members}
     assert member_ids == {owner_user.id, member_user.id}
+
+@pytest.mark.asyncio
+async def test_add_user_to_group_chat_twice(
+        client,
+        user_factory,
+        auth_headers_factory,
+        db_session
+):
+    owner = await user_factory()
+    owner_headers = auth_headers_factory(owner)
+    member = await user_factory()
+
+    chat_id = await _create_group_chat(client_u=client,headers=owner_headers)
+    resp = await client.post(
+        add_user_to_chat_url,
+        headers=owner_headers,
+        json=AddUserGroupChatRequest(
+            user_id=str(member.id),
+            chat_id=str(chat_id)
+        ).model_dump(mode="json")
+    )
+    assert resp.status_code == 200
+
+    resp = await client.post(
+        add_user_to_chat_url,
+        headers=owner_headers,
+        json=AddUserGroupChatRequest(
+            user_id=str(member.id),
+            chat_id=str(chat_id)
+        ).model_dump(mode='json')
+    )
+    assert resp.status_code == 409
 
 
 @pytest.mark.asyncio
