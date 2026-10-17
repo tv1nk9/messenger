@@ -25,12 +25,16 @@ class InfoService:
             self,find_users_req: FindUserRequest
     ) -> FindUsersResponse:
 
-        user_info = find_users_req.query.split()
+        user_info = find_users_req.name.split()
         if not user_info:
-            return FindUsersResponse(users=None)
+            return FindUsersResponse(users=None, has_more=False)
 
         try:
-            users = await self._user_repo.get_users_by_filters(user_info=user_info)
+            users = await self._user_repo.get_users_by_filters(
+                user_info=user_info,
+                limit=find_users_req.limit,
+                offset=find_users_req.offset
+            )
         except Exception as e:
             logger.warning(f"Find users error: {e}")
             raise HTTPException(
@@ -38,13 +42,17 @@ class InfoService:
                 detail="Find users failed"
             )
 
+        has_more = len(users) > find_users_req.limit
+        if has_more:
+            users = users[:find_users_req.limit]
+
         response = {
             str(user.id): (user.name, user.surname, user.patronymic, user.email)
             for user in users
         }
 
         return FindUsersResponse(
-            users=response
+            users=response, has_more=has_more
         )
 
     async def get_user_chats(self, cur_user: CurrentUser) -> UserChatsResponse:

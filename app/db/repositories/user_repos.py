@@ -43,9 +43,10 @@ class UserRepository:
 
     async def get_users_by_filters(
             self,
-            user_info: list[str]
-    ) -> Sequence[UserRole]:
-        limit = 10
+            user_info: list[str],
+            limit: int,
+            offset: int
+    ) -> Sequence[UserModel]:
         query = select(UserModel)
 
         for el in user_info:
@@ -58,9 +59,12 @@ class UserRepository:
                 )
             )
 
-        res = await self._session.execute(query.limit(limit))
+        query = query.order_by(UserModel.id).offset(offset).limit(limit + 1)
 
-        return res.scalars().all()
+        res = await self._session.execute(query)
+        users = res.scalars().all()
+
+        return users
 
     async def delete_user(self):
         pass

@@ -1,5 +1,4 @@
-import datetime
-
+from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
 
 from app.core.configs import chat_config, user_config
@@ -22,7 +21,7 @@ class UserMessage(BaseModel):
     user_id: str
     username: str
     content: str = Field(min_length=1, max_length=chat_config.MAX_LENGTH_MESSAGE)
-    created_at: datetime.datetime
+    created_at: datetime
 
 
 
@@ -104,9 +103,12 @@ class UserChatsResponse(BaseModel):
 
 class FindUserRequest(BaseModel):
     """ Поиск пользователя по ФИО """
-    query: str
+    name: str
+    offset: int | None = 0
+    limit: int | None = 10
 
 
 class FindUsersResponse(BaseModel):
     """ {uuid: (Name, Surname, Patronymic | None)} """
     users: dict[str, tuple[str, str, str | None, str]] | None
+    has_more: bool

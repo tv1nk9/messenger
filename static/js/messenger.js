@@ -287,7 +287,7 @@ async function searchUsers(query) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ query: query })
+            body: JSON.stringify({ name: query })
         });
 
         if (!response.ok) {

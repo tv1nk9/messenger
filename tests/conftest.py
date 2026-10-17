@@ -77,6 +77,7 @@ async def user_factory(db_session):
     async def _create_user(
             name: str = "Test",
             surname: str = "User",
+            patronymic: str = "TestUser",
             email: str | None = None,
             password: str = "test"
     ) -> UserModel:
@@ -85,6 +86,7 @@ async def user_factory(db_session):
         user = UserModel(
             name=name,
             surname=surname,
+            patronymic=patronymic,
             email=unique_email,
             password_hash=await get_password_hash(password),
         )
