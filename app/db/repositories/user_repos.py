@@ -9,13 +9,13 @@ class UserRepository:
         self._session = session
 
     async def create_user(
-            self,
-            name: str,
-            surname: str,
-            patronymic: str | None,
-            email: str,
-            password_hash: str,
-            role: UserRole
+        self,
+        name: str,
+        surname: str,
+        patronymic: str | None,
+        email: str,
+        password_hash: str,
+        role: UserRole,
     ) -> str:
         """Create user and return new user uuid by str"""
         new_user = UserModel(
@@ -24,7 +24,7 @@ class UserRepository:
             surname=surname,
             patronymic=patronymic,
             email=email,
-            password_hash=password_hash
+            password_hash=password_hash,
         )
         self._session.add(new_user)
         await self._session.commit()
@@ -42,10 +42,7 @@ class UserRepository:
         return res.scalar_one_or_none()
 
     async def get_users_by_filters(
-            self,
-            user_info: list[str],
-            limit: int,
-            offset: int
+        self, user_info: list[str], limit: int, offset: int
     ) -> Sequence[UserModel]:
         query = select(UserModel)
 
