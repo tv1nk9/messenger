@@ -12,7 +12,7 @@ from app.web.schemas import (
     UserChatItem,
     UserChatsResponse,
     UserMessage,
-    ChatHistoryResponse
+    ChatHistoryResponse,
 )
 
 
@@ -21,9 +21,7 @@ class InfoService:
         self._user_repo = UserRepository(session)
         self._chat_repo = ChatRepository(session)
 
-    async def find_users(
-            self,find_users_req: FindUserRequest
-    ) -> FindUsersResponse:
+    async def find_users(self, find_users_req: FindUserRequest) -> FindUsersResponse:
 
         user_info = find_users_req.name.split()
         if not user_info:
@@ -33,27 +31,24 @@ class InfoService:
             users = await self._user_repo.get_users_by_filters(
                 user_info=user_info,
                 limit=find_users_req.limit,
-                offset=find_users_req.offset
+                offset=find_users_req.offset,
             )
         except Exception as e:
             logger.warning(f"Find users error: {e}")
             raise HTTPException(
-                status_code=status.HTTP_418_IM_A_TEAPOT,
-                detail="Find users failed"
+                status_code=status.HTTP_418_IM_A_TEAPOT, detail="Find users failed"
             )
 
         has_more = len(users) > find_users_req.limit
         if has_more:
-            users = users[:find_users_req.limit]
+            users = users[: find_users_req.limit]
 
         response = {
             str(user.id): (user.name, user.surname, user.patronymic, user.email)
             for user in users
         }
 
-        return FindUsersResponse(
-            users=response, has_more=has_more
-        )
+        return FindUsersResponse(users=response, has_more=has_more)
 
     async def get_user_chats(self, cur_user: CurrentUser) -> UserChatsResponse:
         try:
@@ -63,8 +58,7 @@ class InfoService:
         except Exception as e:
             logger.warning(f"Get user chats failed: {e}")
             raise HTTPException(
-                status_code=status.HTTP_418_IM_A_TEAPOT,
-                detail="Get user chats failed"
+                status_code=status.HTTP_418_IM_A_TEAPOT, detail="Get user chats failed"
             )
 
         response = []
@@ -105,7 +99,9 @@ class InfoService:
                 item.last_message = UserMessage(
                     user_id=str(m.sender_id),
                     username=(
-                        f"{m.sender.name} {m.sender.surname}" if m.sender else "Deleted user"
+                        f"{m.sender.name} {m.sender.surname}"
+                        if m.sender
+                        else "Deleted user"
                     ),
                     content=m.content,
                     created_at=m.created_at,
@@ -114,21 +110,18 @@ class InfoService:
         # Сортировка чатов по времени последнего сообщения
         response.sort(
             key=lambda item: (
-                # 1. Сначала группируем: чаты с сообщениями (True) идут перед чатами без них (False)
+                # Сначала группируем: чаты с сообщениями идут перед чатами без них
                 item.last_message is not None,
-                # 2. Затем сортируем по времени (от новых к старым)
-                item.last_message.created_at if item.last_message else None
+                # Затем сортируем по времени
+                item.last_message.created_at if item.last_message else None,
             ),
-            reverse=True  # Обратный порядок: новые сообщения сверху
+            reverse=True,  # новые сообщения сверху
         )
 
-        return UserChatsResponse(
-            chats=response
-        )
-
+        return UserChatsResponse(chats=response)
 
     async def get_chat_history(
-            self, cur_user: CurrentUser, chat_id: str, limit: int = 50
+        self, cur_user: CurrentUser, chat_id: str, limit: int = 50
     ) -> ChatHistoryResponse:
         """История сообщений чата. Доступна только участникам чата."""
         if not await self._chat_repo.is_user_in_chat(cur_user.user_id, chat_id):
@@ -144,7 +137,9 @@ class InfoService:
                 UserMessage(
                     user_id=str(m.sender_id),
                     username=(
-                        f"{m.sender.name} {m.sender.surname}" if m.sender else "Deleted user"
+                        f"{m.sender.name} {m.sender.surname}"
+                        if m.sender
+                        else "Deleted user"
                     ),
                     content=m.content,
                     created_at=m.created_at,
