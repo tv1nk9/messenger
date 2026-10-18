@@ -15,25 +15,27 @@ from app.web.schemas import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+
 # authorization page
 @router.get("/", response_class=HTMLResponse, summary="Auth page")
 async def get_categories(request: Request):
-    return templates.TemplateResponse(request,"auth.html")
+    return templates.TemplateResponse(request, "auth.html")
 
 
 @router.post("/register", response_model=UserRegisterResponse)
-async def register(service: AuthServiceDep, admin_user: AdminUserDep, user_in: UserRegisterRequest):
+async def register(
+    service: AuthServiceDep, admin_user: AdminUserDep, user_in: UserRegisterRequest
+):
     return await service.registration(user_in)
+
 
 @router.post("/login", response_model=UserLoginResponse)
 async def login(
-        service: AuthServiceDep,
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    service: AuthServiceDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     return await service.authorization(form_data)
 
+
 @router.post("/refresh", response_model=UserLoginResponse)
-async def refresh_access_token(
-        service: AuthServiceDep, request: TokenRefreshRequest
-):
+async def refresh_access_token(service: AuthServiceDep, request: TokenRefreshRequest):
     return await service.refresh_access_token(request)
