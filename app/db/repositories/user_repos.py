@@ -12,7 +12,7 @@ class UserRepository:
             self,
             name: str,
             surname: str,
-            patronymic: str,
+            patronymic: str | None,
             email: str,
             password_hash: str,
             role: UserRole

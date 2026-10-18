@@ -35,10 +35,12 @@ class AuthService:
                 surname=user_in.surname,
                 patronymic=user_in.patronymic,
                 email=user_in.email,
-                password_hash= await get_password_hash(user_in.password),
+                password_hash=await get_password_hash(user_in.password),
             )
         except IntegrityError:
-            logger.warning(f"Registration failed. Email '{user_in.email}' already exists")
+            logger.warning(
+                f"Registration failed. Email '{user_in.email}' already exists"
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already exist",
@@ -49,9 +51,15 @@ class AuthService:
     async def authorization(
         self, form_data: OAuth2PasswordRequestForm
     ) -> UserLoginResponse:
-        user = await self._repo.get_user_by_email(form_data.username) # form_data.username это email пользователя
-        if not user or not await verify_password(user.password_hash, form_data.password):
-            logger.warning(f"Authorization failed for user email: '{form_data.username}'. Invalid credentials")
+        user = await self._repo.get_user_by_email(
+            form_data.username
+        )  # form_data.username это email пользователя
+        if not user or not await verify_password(
+            user.password_hash, form_data.password
+        ):
+            logger.warning(
+                f"Authorization failed for user email: '{form_data.username}'. Invalid credentials"
+            )
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         ver = 1  # временно
@@ -75,14 +83,16 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid token payload")
         user_role = payload.get("role")
 
-        ver = 1 # временно
+        ver = 1  # временно
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
         return AuthService._get_tokens(user_id, user_role, ver, access_jti, refresh_jti)
 
     @staticmethod
-    def _get_tokens(user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str) -> UserLoginResponse:
+    def _get_tokens(
+        user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str
+    ) -> UserLoginResponse:
         tokens = issue_tokens(user_id, role, ver, access_jti, refresh_jti)
         if (
             not tokens

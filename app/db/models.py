@@ -48,7 +48,7 @@ class UserModel(Base):
     surname: Mapped[str] = mapped_column(
         String(user_config.MAX_LENGTH_USERNAME), unique=False, nullable=False
     )
-    patronymic: Mapped[str] = mapped_column(
+    patronymic: Mapped[str | None] = mapped_column(
         String(user_config.MAX_LENGTH_USERNAME), unique=False, nullable=True
     )
     email: Mapped[str] = mapped_column(
