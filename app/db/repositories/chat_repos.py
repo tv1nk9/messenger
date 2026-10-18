@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,10 +21,8 @@ class ChatRepository:
     async def is_chat_exists(self, chat_id: str) -> bool:
         pass
 
-    async def get_user_chats(
-            self, user_id: str
-    ) -> list[ChatModel]:
-        """ Возвращает список текущих чатов пользователя """
+    async def get_user_chats(self, user_id: str) -> list[ChatModel]:
+        """Возвращает список текущих чатов пользователя"""
 
         # Собираем групповые чаты
         group_query = (
@@ -31,9 +31,7 @@ class ChatRepository:
                 GroupChatMemberModel,
                 GroupChatMemberModel.chat_id == GroupChatModel.chat_id,
             )
-            .where(
-                GroupChatMemberModel.user_id == user_id
-            )
+            .where(GroupChatMemberModel.user_id == user_id)
         )
 
         # Собираем личные чаты
@@ -57,9 +55,8 @@ class ChatRepository:
 
         return list(group_res) + list(private_res)
 
-
     async def get_last_messages_for_chats(
-            self, chat_ids: list[str]
+        self, chat_ids: list[str]
     ) -> dict[str, MessageModel]:
         """Возвращает последнее сообщение для каждого чата из списка."""
         if not chat_ids:
@@ -92,23 +89,18 @@ class ChatRepository:
         res = await self._session.scalars(stmt)
         return {str(m.chat_id): m for m in res}
 
-
     async def create_group_chat(
-            self,
-            name: str,
-            description: str,
-            cur_user_id: str
+        self, name: str, description: str, cur_user_id: str
     ) -> str:
 
         new_chat = GroupChatModel(
-            created_by=cur_user_id,
+            created_by=uuid.UUID(cur_user_id),
             chat_name=name,
             chat_desc=description,
         )
 
         member = GroupChatMemberModel(
-            user_id=cur_user_id,
-            role=ChatMemberRole.OWNER
+            user_id=uuid.UUID(cur_user_id), role=ChatMemberRole.OWNER
         )
         new_chat.members.append(member)
 
@@ -118,29 +110,25 @@ class ChatRepository:
         return str(new_chat.chat_id)
 
     async def add_user_to_group_chat(
-            self,
-            invited_user_id: str,
-            chat_id: str,
+        self,
+        invited_user_id: str,
+        chat_id: str,
     ):
         new_member = GroupChatMemberModel(
-            chat_id=chat_id,
-            user_id=invited_user_id,
+            chat_id=uuid.UUID(chat_id),
+            user_id=uuid.UUID(invited_user_id),
             role=ChatMemberRole.MEMBER,
         )
 
         self._session.add(new_member)
         await self._session.commit()
 
-    async def create_private_chat(
-            self,
-            cur_user_id: str,
-            user_2_id: str
-    ):
+    async def create_private_chat(self, cur_user_id: str, user_2_id: str):
         us_1_id, us_2_id = sorted([cur_user_id, user_2_id])
         new_chat = PrivateChatModel(
-            created_by=cur_user_id,
-            user_1_id=us_1_id,
-            user_2_id=us_2_id,
+            created_by=uuid.UUID(cur_user_id),
+            user_1_id=uuid.UUID(us_1_id),
+            user_2_id=uuid.UUID(us_2_id),
         )
 
         self._session.add(new_chat)
@@ -174,7 +162,9 @@ class ChatRepository:
         )
         return private_exists is not None
 
-    async def get_private_chat_recipient_id(self, user_id: str, chat_id: str) -> str | None:
+    async def get_private_chat_recipient_id(
+        self, user_id: str, chat_id: str
+    ) -> str | None:
         """Для приватного чата возвращает id собеседника (recipient для сообщения)."""
         chat = await self._session.get(PrivateChatModel, chat_id)
         if chat is None:
@@ -184,16 +174,16 @@ class ChatRepository:
         return str(chat.user_1_id) if chat.user_1_id else None
 
     async def create_message(
-            self,
-            chat_id: str,
-            sender_id: str,
-            recipient_id: str | None,
-            content: str,
+        self,
+        chat_id: str,
+        sender_id: str,
+        recipient_id: str | None,
+        content: str,
     ) -> MessageModel:
         message = MessageModel(
-            chat_id=chat_id,
-            sender_id=sender_id,
-            recipient_id=recipient_id,
+            chat_id=uuid.UUID(chat_id),
+            sender_id=uuid.UUID(sender_id),
+            recipient_id=uuid.UUID(recipient_id),
             content=content,
         )
         self._session.add(message)
@@ -201,7 +191,9 @@ class ChatRepository:
         await self._session.refresh(message)
         return message
 
-    async def get_chat_history(self, chat_id: str, limit: int = 50) -> list[MessageModel]:
+    async def get_chat_history(
+        self, chat_id: str, limit: int = 50
+    ) -> list[MessageModel]:
         res = await self._session.scalars(
             select(MessageModel)
             .where(MessageModel.chat_id == chat_id)
