@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.main import templates
+from app.core.configs import settings
 from app.web.deps import AdminUserDep, AuthServiceDep
 from app.web.schemas import (
     TokenRefreshRequest,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # authorization page
 @router.get("/", response_class=HTMLResponse, summary="Auth page")
 async def get_categories(request: Request):
-    return templates.TemplateResponse(request, "auth.html")
+    return settings.templates.TemplateResponse(request, "auth.html")
 
 
 @router.post("/register", response_model=UserRegisterResponse)

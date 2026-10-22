@@ -2,8 +2,10 @@ import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
+from fastapi.templating import Jinja2Templates
 
 load_dotenv()
+
 
 class JWTConfig:
     SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -16,6 +18,7 @@ class JWTConfig:
 
 jwt_config = JWTConfig()
 
+
 class ChatConfig:
     MAX_LENGTH_CHAT_NAME = 16
     MIN_LENGTH_CHAT_NAME = 2
@@ -24,7 +27,9 @@ class ChatConfig:
     MAX_LENGTH_MESSAGE = 1000
     MIN_LENGTH_MESSAGE = 1
 
+
 chat_config = ChatConfig()
+
 
 class UserConfig:
     MAX_LENGTH_USERNAME = 16
@@ -32,11 +37,19 @@ class UserConfig:
     MAX_LENGTH_PASSWORD = 16
     MIN_LENGTH_PASSWORD = 4
 
+
 user_config = UserConfig()
 
 
 class AppSetting:
     API_V1_STR: str = "/api/v1"
+
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
+    templates = Jinja2Templates(directory="templates")
 
 
 settings = AppSetting()
@@ -59,6 +72,5 @@ class APIPrefix:
     CHAT_HISTORY: str = "/chat_history"
     """ /chat_history/{chat_id} """
 
+
 api_prefix = APIPrefix()
-
-

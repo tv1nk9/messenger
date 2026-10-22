@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from app.main import templates
+from app.core.configs import settings
 from app.web.deps import CurrentUserDep, InfoServiceDep
 from app.web.schemas import (
     ChatHistoryResponse,
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/info", tags=["info"])
 
 @router.get("/", response_class=HTMLResponse, summary="Chats page")
 async def get_categories(request: Request):
-    return templates.TemplateResponse(request, "messenger.html")
+    return settings.templates.TemplateResponse(request, "messenger.html")
 
 
 @router.post("/find_user", response_model=FindUsersResponse)
