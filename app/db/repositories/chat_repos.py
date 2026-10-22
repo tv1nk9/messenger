@@ -183,7 +183,7 @@ class ChatRepository:
         message = MessageModel(
             chat_id=uuid.UUID(chat_id),
             sender_id=uuid.UUID(sender_id),
-            recipient_id=uuid.UUID(recipient_id),
+            recipient_id=uuid.UUID(recipient_id) if recipient_id else None,
             content=content,
         )
         self._session.add(message)
