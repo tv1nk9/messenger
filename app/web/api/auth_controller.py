@@ -16,15 +16,14 @@ from app.web.schemas import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# authorization page
 @router.get("/", response_class=HTMLResponse, summary="Auth page")
-async def get_categories(request: Request):
+async def get_auth_page(request: Request):
     return settings.templates.TemplateResponse(request, "auth.html")
 
 
 @router.post("/register", response_model=UserRegisterResponse)
 async def register(
-    service: AuthServiceDep, admin_user: AdminUserDep, user_in: UserRegisterRequest
+    service: AuthServiceDep, _: AdminUserDep, user_in: UserRegisterRequest
 ):
     return await service.registration(user_in)
 
