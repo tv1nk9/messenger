@@ -24,7 +24,20 @@ def verify_token(token: str) -> None | dict:
         return None
 
 
-def generate_token(subject: str, role: UserRole, token_type: str, jti: str, ver: int) -> None | str:
+def get_user_id_from_access_token(token: str | None) -> str | None:
+    """Достаёт user_id из access-токена"""
+    if not token:
+        return None
+    payload = verify_token(token)
+    if not payload or payload.get("type") != "access":
+        return None
+
+    return payload.get("sub")
+
+
+def generate_token(
+    subject: str, role: UserRole, token_type: str, jti: str, ver: int
+) -> None | str:
     if not subject:
         return None
 
@@ -51,11 +64,15 @@ def generate_token(subject: str, role: UserRole, token_type: str, jti: str, ver:
 def issue_tokens(
     user_id: str, role: UserRole, ver: int, access_jti: str, refresh_jti: str
 ) -> None | dict:
-    """ Возвращает словарь формата: {"access_token": "....", "refresh_token": "...."} """
-    return {
-        "access_token": generate_token(user_id, role, "access", access_jti, ver),
-        "refresh_token": generate_token(user_id, role, "refresh", refresh_jti, ver),
-    } if user_id else None
+    """Возвращает словарь формата: {"access_token": "....", "refresh_token": "...."}"""
+    return (
+        {
+            "access_token": generate_token(user_id, role, "access", access_jti, ver),
+            "refresh_token": generate_token(user_id, role, "refresh", refresh_jti, ver),
+        }
+        if user_id
+        else None
+    )
 
 
 async def verify_password(password_hash: str, password: str) -> bool:
@@ -64,6 +81,7 @@ async def verify_password(password_hash: str, password: str) -> bool:
         return True
     except VerifyMismatchError:
         return False
+
 
 async def get_password_hash(password: str) -> str:
     return await asyncio.to_thread(ph.hash, password)
