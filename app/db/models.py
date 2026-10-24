@@ -117,7 +117,7 @@ class GroupChatModel(ChatModel):
         String(chat_config.MAX_LENGTH_CHAT_NAME),
         nullable=False
     )
-    chat_desc: Mapped[str] = mapped_column(
+    chat_desc: Mapped[str | None] = mapped_column(
         String(chat_config.MAX_LENGTH_CHAT_DESC),
         nullable=True
     )

@@ -66,7 +66,8 @@ class GroupChatCreateRequest(BaseModel):
         min_length=chat_config.MIN_LENGTH_CHAT_NAME,
         max_length=chat_config.MAX_LENGTH_CHAT_NAME
     )
-    chat_description: str = Field(
+    chat_description: str | None = Field(
+        default="Group Chat",
         min_length=chat_config.MIN_LENGTH_CHAT_DESC,
         max_length=chat_config.MAX_LENGTH_CHAT_DESC
     )
