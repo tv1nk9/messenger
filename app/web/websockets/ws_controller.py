@@ -10,6 +10,7 @@ from app.db.repositories.chat_repos import ChatRepository
 from app.db.session import session_factory
 from app.web.schemas import SendMessage
 from app.web.websockets.conn_manager import manager
+from app.web.websockets.ws_schemas import WsEvents, WsMessage
 
 router = APIRouter(prefix="/ws", tags=["ws"])
 
@@ -70,15 +71,15 @@ async def chat_ws(ws: WebSocket, chat_id: str, token: str = Query(...)):
                 sender = await session.get(UserModel, message.sender_id) if message.sender_id else None
 
                 payload = {
-                    "event": "new_message",
-                    "message": {
-                        "id": str(message.id),
-                        "chat_id": str(message.chat_id),
-                        "user_id": str(message.sender_id),
-                        "username": f"{sender.name} {sender.surname}" if sender else None,
-                        "content": message.content,
-                        "created_at": message.created_at.isoformat(),
-                    },
+                    "event": WsEvents.new_message.value,
+                    "message": WsMessage(
+                        id=str(message.id),
+                        chat_id=str(message.chat_id),
+                        user_id=str(message.sender_id),
+                        username=f"{sender.name} {sender.surname}" if sender else None,
+                        content=message.content,
+                        created_at=message.created_at.isoformat(),
+                    ).model_dump(),
                 }
 
                 await manager.broadcast_to_chat(chat_id, payload)

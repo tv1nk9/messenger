@@ -1,22 +1,21 @@
 from collections import defaultdict
-
 from fastapi import WebSocket
 
-# from app.web.schemas import UserMessage
+from app.web.websockets.ws_schemas import WsEvents
 
 
 class ConnectionManager:
     """
-    Реестр активных WebSocket-подключений.
+    Реестр активных WebSocket.
 
     Хранит:
-      - user_to_ws:  chat_id -> {user_id: {WebSocket,...}} — сами соединения;
+      - user_to_ws:  {chat_id: {user_id: set(WebSocket)}} - соединения;
                      один пользователь может иметь несколько вкладок.
-      - user_chats:  user_id -> {chat_id,...} — открытые чаты пользователя.
-                     Нужно для мгновенных уведомлений: когда собеседник пишет
+      - user_chats:  {user_id: set(chat_id)} - открытые чаты пользователя.
+                     Нужно для мгновенных уведомлений, когда собеседник пишет
                      в чат, который у пользователя открыт в списке (но сам
                      чат не выбран), шлём ему событие chat_updated, и список
-                     чатов обновляется без перезагрузки страницы.
+                     чатов обновляется
     """
     def __init__(self):
         self.user_to_ws: dict[str, dict[str, set[WebSocket]]] = defaultdict(lambda: defaultdict(set))
@@ -39,7 +38,7 @@ class ConnectionManager:
         if not chats:
             del self.user_to_ws[chat_id]
 
-        still_connected = ws in self.user_to_ws.get(chat_id, {}).get(user_id, ())
+        still_connected = self.user_to_ws.get(chat_id, {}).get(user_id)
         if not still_connected:
             open_chats = self.user_chats.get(user_id)
             if open_chats:
@@ -52,21 +51,20 @@ class ConnectionManager:
             try:
                 await ws.send_json(message)
             except RuntimeError:
-                pass # соединение уже закрыто
+                pass
 
     async def broadcast_to_chat(self, chat_id: str, message: dict):
         for uid in list(self.user_to_ws.get(chat_id, {})):
             await self.send_personal(chat_id, uid, message)
 
     async def notify_chat_updated(self, chat_id: str, sender_id: str, message: dict):
-        """Шлём всем подключённым пользователям событие chat_updated.
+        """Шлём всем подключённым пользователям событие chat_updated для обновления списка чатов на фронте
 
-        Так список чатов обновляется мгновенно: и превью последнего сообщения
-        в уже известном чате, и появление нового чата. Фронт на это событие перезагружает список
-        через REST; получателей, уже находящихся в этом чате, не пропускаем, они и так получат new_message.
+        Обновляется превью последнего сообщения в уже известном чате, и появляется новый чат.
+        Фронт на это событие перезагружает список через REST
         """
         payload = {
-            "event": "chat_updated",
+            "event": WsEvents.chat_updated.value,
             "chat_id": str(chat_id),
             "last_message": message,
         }
