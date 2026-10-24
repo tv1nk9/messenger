@@ -32,9 +32,8 @@ class UserRepository:
         return str(new_user.id)
 
     async def get_user_by_id(self, user_id: str) -> UserModel | None:
-        query = select(UserModel).where(UserModel.id == user_id)
-        res = await self._session.execute(query)
-        return res.scalar_one_or_none()
+        return await self._session.get(UserModel, user_id)
+
 
     async def get_user_by_email(self, email: str) -> UserModel | None:
         query = select(UserModel).where(UserModel.email == email)
