@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-
 
 from app.core.configs import settings
 from app.core.logger_config import setup_logger
@@ -16,11 +16,15 @@ app = FastAPI(
 )
 
 app.add_middleware(
+    GZipMiddleware,
+    minimum_size=settings.GZIP_SIZE,
+)
+app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=settings.CORS_METHODS,
+    allow_headers=settings.CORS_HEADERS,
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
