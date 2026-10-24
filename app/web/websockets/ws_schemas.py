@@ -1,6 +1,9 @@
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.core.configs import chat_config
+
 
 class WsEvents(str, Enum):
     new_message = "new_message"
@@ -19,3 +22,9 @@ class WsMessage(BaseModel):
 class WsChatUpdated(BaseModel):
     chat_id: str
     last_message: WsMessage
+
+
+class SendMessage(BaseModel):
+    chat_id: str
+    user_id: str
+    content: str = Field(min_length=1, max_length=chat_config.MAX_LENGTH_MESSAGE)
