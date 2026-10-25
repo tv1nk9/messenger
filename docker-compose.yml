@@ -49,6 +49,23 @@ services:
     volumes:
       - .:/app
 
+  bootstrap-admin:
+    build: .
+    profiles: ["bootstrap"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      FIRST_ADMIN_EMAIL: ${FIRST_ADMIN_EMAIL}
+      FIRST_ADMIN_PASSWORD: ${FIRST_ADMIN_PASSWORD}
+      FIRST_ADMIN_NAME: ${FIRST_ADMIN_NAME}
+      FIRST_ADMIN_SURNAME: ${FIRST_ADMIN_SURNAME}
+      FIRST_ADMIN_PATRONYMIC: ${FIRST_ADMIN_PATRONYMIC}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && python -m app.bootstrap.create_first_admin"
+
 volumes:
   pgdata:
     driver: local
