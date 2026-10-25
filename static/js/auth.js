@@ -1,89 +1,188 @@
-const LOGIN_URL = "/api/v1/auth/login";
-const MAIN_PAGE_URL = "/";
+/*
+ * ==========================================================
+ * AUTH PAGE — вход + регистрация (только для администратора)
+ * Использует window.Api из api.js
+ * ==========================================================
+ */
+(function () {
+    "use strict";
 
-// DOM
-const form = document.getElementById("login-form");
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
-const errorBox = document.getElementById("error-box");
-const submitButton = document.getElementById("submit-btn");
+    const $ = (id) => document.getElementById(id);
 
-// ERROR Handling
-function showError(message) {
-    errorBox.textContent = message;
-    errorBox.classList.remove("d-none");
-}
+    const alertBox = $("alert-box");
+    const loginForm = $("login-form");
+    const registerForm = $("register-form");
+    const switchLink = $("switch-link");
+    const backToLogin = $("back-to-login");
+    const switchHint = $("switch-hint");
+    const authTitle = $("auth-title");
+    const authSubtitle = $("auth-subtitle");
 
-function hideError() {
-    errorBox.textContent = "";
-    errorBox.classList.add("d-none");
-}
+    /* ---------- Alerts ---------- */
 
-// INIT
-// Если токен уже есть, нет смысла показывать страницу авторизации
-if (localStorage.getItem("access_token")) {
-    window.location.href = MAIN_PAGE_URL;
-}
+    function showAlert(message, type) {
+        alertBox.textContent = message;
+        alertBox.className = `auth-alert alert-${type || "danger"}`;
+        alertBox.classList.remove("d-none");
+    }
 
-// LOGIN Logic
-if (form) {
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        hideError();
+    function hideAlert() {
+        alertBox.classList.add("d-none");
+        alertBox.textContent = "";
+    }
 
-        // Блокируем кнопку на время запроса
-        submitButton.disabled = true;
-        const originalBtnText = submitButton.textContent;
-        submitButton.textContent = "Вход...";
+    /* ---------- Если уже авторизован ---------- */
 
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
+    if (Api.getAccessToken()) {
+        window.location.href = Api.MAIN_PAGE;
+        return;
+    }
 
-        try {
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
+    /* ---------- Переключение форм ---------- */
 
-            const response = await fetch(LOGIN_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: formData
-            });
+    function showRegister() {
+        loginForm.classList.add("d-none");
+        registerForm.classList.remove("d-none");
+        switchLink.classList.add("d-none");
+        backToLogin.classList.remove("d-none");
+        switchHint.textContent = "Регистрация новой учётной записи";
+        authTitle.textContent = "Регистрация";
+        authSubtitle.textContent = "Форма доступна только администраторам системы";
+        hideAlert();
+    }
 
-            // Если сервер вернул ошибку
-            if (!response.ok) {
-                let errorMessage = "Неверный email или пароль";
-                try {
-                    const data = await response.json();
-                    errorMessage = errorMessage;
-                } catch (e) {
-                }
-                throw new Error(errorMessage);
-            }
+    function showLogin() {
+        registerForm.classList.add("d-none");
+        loginForm.classList.remove("d-none");
+        backToLogin.classList.add("d-none");
+        switchLink.classList.remove("d-none");
+        switchHint.textContent = "Ещё нет аккаунта?";
+        authTitle.textContent = "С возвращением";
+        authSubtitle.textContent = "Введите данные учётной записи, чтобы продолжить";
+        hideAlert();
+    }
 
-            const data = await response.json();
+    switchLink.addEventListener("click", (e) => { e.preventDefault(); showRegister(); });
+    backToLogin.addEventListener("click", (e) => { e.preventDefault(); showLogin(); });
 
-            if (!data.access_token) {
-                throw new Error("Сервер не вернул токен авторизации");
-            }
+    /* ---------- Показ/скрытие пароля ---------- */
 
-            // Сохраняем JWT
-            localStorage.setItem("access_token", data.access_token);
-
-            // Открываем главную страницу
-            window.location.href = MAIN_PAGE_URL;
-
-        } catch (error) {
-            console.error("Login error:", error);
-            showError(error.message || "Не удалось выполнить вход");
-        } finally {
-            // Возвращаем кнопку в исходное состояние
-            submitButton.disabled = false;
-            submitButton.textContent = originalBtnText;
-        }
+    document.querySelectorAll(".pwd-toggle").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const input = $(btn.dataset.target);
+            if (!input) return;
+            const isPwd = input.type === "password";
+            input.type = isPwd ? "text" : "password";
+            btn.textContent = isPwd ? "🙈" : "👁";
+        });
     });
-} else {
-    console.warn("Элемент формы #login-form не найден на странице.");
-}
+
+    /* ---------- LOGIN ---------- */
+
+    if (loginForm) {
+        loginForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            hideAlert();
+
+            const email = $("username").value.trim();
+            const password = $("password").value;
+
+            if (!email || !password) {
+                showAlert("Заполните email и пароль");
+                return;
+            }
+
+            const btn = $("submit-btn");
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = "Вход...";
+
+            try {
+                await Api.login(email, password);
+                window.location.href = Api.MAIN_PAGE;
+            } catch (error) {
+                console.error("Login error:", error);
+                showAlert(error.status === 401 ? "Неверный email или пароль" : (error.message || "Не удалось выполнить вход"));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        });
+    }
+
+    /* ---------- REGISTER (admin-only flow) ---------- */
+
+    if (registerForm) {
+        registerForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            hideAlert();
+            $("reg-success").classList.add("d-none");
+
+            const adminEmail = $("reg-admin-email").value.trim();
+            const adminPassword = $("reg-admin-password").value;
+
+            const user = {
+                role: $("reg-role").value,
+                name: $("reg-name").value.trim(),
+                surname: $("reg-surname").value.trim(),
+                patronymic: $("reg-patronymic").value.trim() || null,
+                email: $("reg-email").value.trim(),
+                password: $("reg-password").value
+            };
+
+            // Клиентская валидация по ограничениям схемы бэкенда
+            const lenErr = (v, min, max, label) =>
+                v.length < min || v.length > max
+                    ? `${label}: от ${min} до ${max} символов` : null;
+
+            const errors = [];
+            if (!adminEmail || !adminPassword) errors.push("Укажите учётные данные администратора");
+            if (!user.name) errors.push(lenErr(user.name || "", 2, 16, "Имя"));
+            else errors.push(lenErr(user.name, 2, 16, "Имя"));
+            errors.push(lenErr(user.surname, 2, 16, "Фамилия"));
+            if (user.patronymic) errors.push(lenErr(user.patronymic, 2, 16, "Отчество"));
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(user.email)) errors.push("Некорректный email");
+            errors.push(lenErr(user.password, 4, 16, "Пароль"));
+
+            const filtered = errors.filter(Boolean);
+            if (filtered.length) {
+                showAlert(filtered[0]);
+                return;
+            }
+
+            const btn = $("register-btn");
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = "Создание...";
+
+            try {
+                // 1. Авторизуемся под админом (нужен Bearer токен админа)
+                await Api.login(adminEmail, adminPassword);
+
+                if (!Api.isAdmin()) {
+                    Api.clearTokens();
+                    throw Object.assign(new Error("Регистрировать пользователей может только администратор"), { status: 403 });
+                }
+
+                // 2. Создаём пользователя
+                const result = await Api.register(user);
+
+                // 3. Возвращаем сессию админа (login выше перезаписал токены тем же админом — ок)
+                $("reg-success").classList.remove("d-none");
+                $("reg-user-id").textContent = result.user_id || "—";
+                showAlert(`Пользователь «${user.name} ${user.surname}» создан`, "success");
+                registerForm.reset();
+            } catch (error) {
+                console.error("Register error:", error);
+                if (error.status === 409) showAlert("Пользователь с таким email уже существует");
+                else if (error.status === 401) showAlert("Неверные учётные данные администратора");
+                else if (error.status === 403) showAlert(error.message);
+                else showAlert(error.message || "Не удалось создать пользователя");
+                Api.clearTokens();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        });
+    }
+})();

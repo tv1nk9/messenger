@@ -5,30 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мессенджер</title>
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Наши стили -->
-    <link href="/static/css/messenger.css" rel="stylesheet">
+    <link href="/static/css/messenger.css?v=2" rel="stylesheet">
 </head>
 
 <body>
 
 <div class="messenger" id="messenger">
-    <!-- ==============================================
-         LEFT SIDEBAR
-         ============================================== -->
-    <aside class="sidebar">
+
+    <!-- ===================== LEFT SIDEBAR ===================== -->
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-title">
-                <span>Мессенджер</span>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="logout-btn">Выйти</button>
+            <div class="brand-row">
+                <div class="brand">
+                    <div class="brand-logo">M</div>
+                    <span>Мессенджер</span>
+                </div>
+                <div class="user-chip" id="user-chip" title="Текущий пользователь">
+                    <div class="avatar avatar--sm" id="user-avatar">?</div>
+                    <button type="button" class="icon-btn" id="logout-btn" title="Выйти">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- SEARCH USERS -->
             <div class="search-wrapper">
-                <label for="user-search" class="visually-hidden">Поиск</label>
-                <input type="text" class="form-control" id="user-search" placeholder="Поиск пользователей..." autocomplete="off">
-                <div class="search-results" id="search-results"></div>
+                <label for="user-search" class="visually-hidden">Поиск пользователей</label>
+                <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="form-control" id="user-search" placeholder="Поиск по ФИО..." autocomplete="off">
+                <div class="search-results card-pop" id="search-results"></div>
+            </div>
+
+            <!-- TABS -->
+            <div class="chat-tabs" role="tablist">
+                <button class="chat-tab active" data-filter="all" type="button">Все</button>
+                <button class="chat-tab" data-filter="private" type="button">Личные</button>
+                <button class="chat-tab" data-filter="group" type="button">Группы</button>
             </div>
         </div>
 
@@ -37,35 +50,45 @@
             <div class="chat-empty">Загрузка чатов...</div>
         </div>
 
-        <!-- CREATE GROUP -->
+        <!-- ACTIONS -->
         <div class="sidebar-footer">
-            <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+            <button type="button" class="btn btn-primary w-100" id="new-group-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Создать групповой чат
             </button>
         </div>
     </aside>
 
-    <!-- ==============================================
-         MAIN CONTENT
-         ============================================== -->
+    <!-- ===================== MAIN CONTENT ===================== -->
     <main class="content">
+
         <!-- WELCOME -->
         <section class="welcome" id="welcome">
             <div class="welcome-content">
                 <div class="welcome-icon">💬</div>
-                <h1 class="h3 mb-3">Добро пожаловать</h1>
-                <p class="mb-0">Выберите чат слева, чтобы начать общение.</p>
+                <h1>Добро пожаловать</h1>
+                <p>Выберите чат слева или найдите собеседника,<br>чтобы начать общение в реальном времени.</p>
             </div>
         </section>
 
         <!-- CHAT WINDOW -->
         <section class="chat-window" id="chat-window">
             <header class="chat-header">
+                <button type="button" class="icon-btn back-btn" id="back-btn" title="Назад к чатам">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
                 <div class="avatar" id="chat-avatar">?</div>
-                <div>
+                <div class="chat-header-info">
                     <div class="chat-header-name" id="chat-header-name"></div>
                     <div class="chat-header-type" id="chat-header-type"></div>
                 </div>
+                <div class="ws-status" id="ws-status" title="Статус соединения">
+                    <span class="ws-dot"></span><span class="ws-label">Соединение…</span>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm add-member-btn" id="add-member-btn" title="Пригласить пользователя в чат">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Пригласить
+                </button>
             </header>
 
             <div class="messages" id="messages">
@@ -74,41 +97,48 @@
 
             <div class="message-input">
                 <form id="message-form">
-                    <div class="input-group">
+                    <div class="composer">
                         <label for="message-input" class="visually-hidden">Сообщение</label>
-                        <input type="text" class="form-control" id="message-input" placeholder="Введите сообщение..." disabled>
-                        <button type="submit" class="btn btn-primary" id="message-send-btn" disabled>Отправить</button>
+                        <textarea class="composer-field" id="message-input" rows="1"
+                                  placeholder="Введите сообщение..." maxlength="1000" disabled></textarea>
+                        <button type="submit" class="send-btn" id="message-send-btn" title="Отправить" disabled>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
                     </div>
+                    <div class="composer-hint" id="composer-hint"></div>
                 </form>
             </div>
         </section>
     </main>
+
+    <!-- Mobile sidebar backdrop -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 </div>
 
-<!-- ==============================================
-     CREATE GROUP MODAL
-     ============================================== -->
+<!-- ===================== CREATE GROUP MODAL ===================== -->
 <div class="modal fade" id="createGroupModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form id="create-group-form">
                 <div class="modal-header">
-                    <h5 class="modal-title">Создание группового чата</h5>
+                    <h5 class="modal-title">Новый групповой чат</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
                 <div class="modal-body">
                     <div id="group-error" class="alert alert-danger d-none"></div>
                     <div class="mb-3">
                         <label for="group-name" class="form-label">Название</label>
-                        <input type="text" class="form-control" id="group-name" maxlength="100" required>
+                        <input type="text" class="form-control" id="group-name" minlength="2" maxlength="16" required>
+                        <div class="form-text">От 2 до 16 символов</div>
                     </div>
                     <div class="mb-3">
                         <label for="group-description" class="form-label">Описание</label>
-                        <textarea class="form-control" id="group-description" rows="3" maxlength="500"></textarea>
+                        <textarea class="form-control" id="group-description" rows="3" maxlength="250"
+                                  placeholder="Групповой чат"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-primary" id="create-group-submit">Создать</button>
                 </div>
             </form>
@@ -116,10 +146,30 @@
     </div>
 </div>
 
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Наш скрипт -->
-<script src="/static/js/messenger.js"></script>
+<!-- ===================== INVITE MODAL (поиск + add_user_to_chat) ===================== -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Пригласить в чат «<span id="invite-chat-name"></span>»</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div id="invite-result-msg" class="alert d-none"></div>
+                <div class="mb-3">
+                    <label for="invite-search" class="form-label">Найти пользователя по ФИО</label>
+                    <input type="text" class="form-control" id="invite-search" placeholder="Иванов Иван..." autocomplete="off">
+                </div>
+                <div class="invite-results" id="invite-results">
+                    <div class="text-muted small">Начните вводить имя для поиска.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/api.js?v=2"></script>
+<script src="/static/js/messenger.js?v=2"></script>
 </body>
 </html>
