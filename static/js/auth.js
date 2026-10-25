@@ -1,5 +1,5 @@
 const LOGIN_URL = "/api/v1/auth/login";
-const MAIN_PAGE_URL = "/api/v1/info";
+const MAIN_PAGE_URL = "/";
 
 // DOM
 const form = document.getElementById("login-form");

@@ -13,11 +13,6 @@ from app.web.schemas import (
 router = APIRouter(prefix="/info", tags=["info"])
 
 
-@router.get("/", response_class=HTMLResponse, summary="Chats page")
-async def get_categories(request: Request):
-    return settings.templates.TemplateResponse(request, "messenger.html")
-
-
 @router.post("/find_user", response_model=FindUsersResponse)
 async def find_users(
     service: InfoServiceDep, cur_user: CurrentUserDep, req: FindUserRequest

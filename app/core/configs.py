@@ -44,7 +44,9 @@ user_config = UserConfig()
 class AppSetting:
     API_V1_STR: str = "/api/v1"
 
-    CORS_ORIGINS: list[str] = []
+    CORS_ORIGINS: list[str] = [
+        "http://92.242.63.116"
+    ]
     CORS_METHODS: list[str] = ["GET", "POST"]
     CORS_HEADERS: list[str] = []
 

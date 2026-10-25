@@ -60,7 +60,7 @@ function authHeaders() {
 
 function redirectToLogin() {
     localStorage.removeItem("access_token");
-    window.location.href = "/api/v1/auth/"; // Или "/login", в зависимости от вашего роутинга
+    window.location.href = "/login_page"; // Или "/login", в зависимости от вашего роутинга
 }
 
 async function apiFetch(url, options = {}) {
@@ -454,8 +454,7 @@ createGroupForm.addEventListener("submit", async (event) => {
  * ==========================================================
  */
 logoutButton.addEventListener("click", () => {
-    localStorage.removeItem("access_token");
-    window.location.href = "/api/v1/auth/";
+    redirectToLogin()
 });
 
 document.addEventListener("click", (event) => {
