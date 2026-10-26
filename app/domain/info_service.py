@@ -97,6 +97,7 @@ class InfoService:
             m = last_messages.get(item.chat_id)
             if m is not None:
                 item.last_message = UserMessage(
+                    id=str(m.id),
                     user_id=str(m.sender_id),
                     username=(
                         f"{m.sender.name} {m.sender.surname}"
@@ -121,20 +122,35 @@ class InfoService:
         return UserChatsResponse(chats=response)
 
     async def get_chat_history(
-        self, cur_user: CurrentUser, chat_id: str, limit: int = 50
+        self,
+        cur_user: CurrentUser,
+        chat_id: str,
+        limit: int = 50,
+        cursor: str | None = None,
     ) -> ChatHistoryResponse:
-        """История сообщений чата. Доступна только участникам чата."""
+        """возвращает последние limit сообщений чата"""
         if not await self._chat_repo.is_user_in_chat(cur_user.user_id, chat_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not a member of this chat",
             )
 
-        messages = await self._chat_repo.get_chat_history(chat_id, limit=limit)
+        messages = await self._chat_repo.get_chat_history(
+            chat_id, limit=limit, cursor=cursor
+        )
+        has_more = len(messages) > limit
+        if has_more:
+            next_cursor = str(messages[-1].id)
+            messages = messages[:limit]
+        else:
+            next_cursor = None
+
+        messages = messages[::-1]
 
         return ChatHistoryResponse(
             messages=[
                 UserMessage(
+                    id=str(m.id),
                     user_id=str(m.sender_id),
                     username=(
                         f"{m.sender.name} {m.sender.surname}"
@@ -145,5 +161,7 @@ class InfoService:
                     created_at=m.created_at,
                 )
                 for m in messages
-            ]
+            ],
+            next_cursor=next_cursor,
+            has_more=has_more,
         )

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from typing import Optional
 
-from app.core.configs import settings
+from fastapi import APIRouter, Query
+
 from app.web.deps import CurrentUserDep, InfoServiceDep
 from app.web.schemas import (
     ChatHistoryResponse,
@@ -30,6 +30,9 @@ async def chat_history(
     chat_id: str,
     service: InfoServiceDep,
     cur_user: CurrentUserDep,
-    limit: int = 50,
+    limit: int = Query(default=50, le=100),
+    cursor: Optional[str | None] = Query(default=None),
 ):
-    return await service.get_chat_history(cur_user, chat_id, limit)
+    if isinstance(cursor, str) and cursor.lower() in ("null", "none", ""):
+        cursor = None
+    return await service.get_chat_history(cur_user, chat_id, limit, cursor)

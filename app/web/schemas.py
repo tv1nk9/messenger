@@ -16,6 +16,7 @@ class CurrentUser(BaseModel):
 
 
 class UserMessage(BaseModel):
+    id: str
     user_id: str
     username: str
     content: str = Field(min_length=1, max_length=chat_config.MAX_LENGTH_MESSAGE)
@@ -90,6 +91,8 @@ class PrivateChatCreateResponse(BaseModel):
 
 class ChatHistoryResponse(BaseModel):
     messages: list[UserMessage]
+    next_cursor: str | None = None
+    has_more: bool
 
 
 class UserChatItem(BaseModel):

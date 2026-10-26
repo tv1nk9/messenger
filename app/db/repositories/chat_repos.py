@@ -192,13 +192,22 @@ class ChatRepository:
         return message
 
     async def get_chat_history(
-        self, chat_id: str, limit: int = 50
+        self, chat_id: str, limit: int, cursor: str | None
     ) -> list[MessageModel]:
-        res = await self._session.scalars(
+        """Возвращает последние limit сообщений и id самого раннего сообщения (курсор)"""
+
+        query = (
             select(MessageModel)
-            .where(MessageModel.chat_id == chat_id)
+            .where(MessageModel.chat_id == uuid.UUID(chat_id))
             .options(selectinload(MessageModel.sender))
-            .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
-            .limit(limit)
         )
-        return list(res)[::-1]
+
+        if cursor is not None:
+            query = query.where(MessageModel.id < cursor)
+
+        query = query.order_by(MessageModel.id.desc()).limit(limit + 1)
+
+        res = await self._session.scalars(query)
+        messages = list(res)
+
+        return messages
