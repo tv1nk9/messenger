@@ -227,7 +227,8 @@ class MessageModel(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         primary_key=True,
-        server_default=text("gen_random_uuid()")
+        default=lambda: str(uuid.uuid7()),
+        # server_default=text("gen_random_uuid()")
     )
     chat_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("chats.id", ondelete="CASCADE"),
