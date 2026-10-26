@@ -54,6 +54,11 @@
 
     /* ===================== HELPERS ===================== */
 
+    async function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+
     function getInitials(name) {
         if (!name) return "?";
         const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -240,10 +245,18 @@
 
     /* ===================== OPEN CHAT ===================== */
 
+    let currentCursor = null;
+    let isLoadingHistory = false;
+    let hasMoreHistory = false;
+
     async function openChat(chat) {
         const previousChatId = selectedChatId;
         selectedChatId = chat.id;
         chat.unread = 0;
+
+        currentCursor = null;
+        isLoadingHistory = false;
+        hasMoreHistory = true;
 
         closeActiveSocket();
         if (previousChatId && previousChatId !== chat.id) closeListSocket(previousChatId);
@@ -264,9 +277,16 @@
 
         // 1. История через REST
         try {
-            const data = await Api.getChatHistory(chat.id, 50);
+            const data = await Api.getChatHistory(chat.id, 100, currentCursor);
             if (String(selectedChatId) === String(chat.id)) {
+                messages.innerHTML = ``
                 renderMessages(data.messages || []);
+
+                hasMoreHistory = data.has_more;
+                currentCursor = data.next_cursor;
+
+                messages.scrollTop = messages.scrollHeight;
+
             }
         } catch (error) {
             console.error(error);
@@ -277,6 +297,50 @@
         connectActiveSocket(chat.id);
 
         renderChats();
+    }
+
+    messages.addEventListener("scroll", async () => {
+        await sleep(1000);
+        if (messages.scrollTop < 50 && !isLoadingHistory && hasMoreHistory) {
+            await loadMoreHistory();
+        }
+    });
+
+    async function loadMoreHistory() {
+        if (isLoadingHistory || !hasMoreHistory) return;
+        isLoadingHistory = true;
+
+        const topSpinner = document.createElement("div");
+        topSpinner.className = "loading-spinner-top";
+        topSpinner.textContent = "Загрузка...";
+        messages.prepend(topSpinner);
+
+        try {
+            const data = await Api.getChatHistory(selectedChatId, 50, currentCursor);
+
+            if (data.messages && data.messages.length > 0) {
+                // Запоминаем позицию ДО вставки
+                const oldScrollHeight = messages.scrollHeight;
+                const oldScrollTop = messages.scrollTop;
+
+                // ✅ Вставляем наверх, а НЕ перерисовываем
+                prependMessages(data.messages);
+
+                hasMoreHistory = data.has_more;
+                currentCursor = data.next_cursor;
+
+                // Компенсируем сдвиг: пользователь остаётся на том же месте
+                const newScrollHeight = messages.scrollHeight;
+                messages.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+            } else {
+                hasMoreHistory = false;
+            }
+        } catch (error) {
+            console.error("Ошибка загрузки истории:", error);
+        } finally {
+            isLoadingHistory = false;
+            topSpinner.remove();
+        }
     }
 
     function goBackToList() {
@@ -433,6 +497,45 @@
     });
 
     /* ===================== MESSAGES RENDER ===================== */
+
+
+    function prependMessages(list) {
+        const empty = messages.querySelector(".messages-empty");
+        if (empty) empty.remove();
+
+        const fragment = document.createDocumentFragment();
+        let lastDate = null;
+
+        list.forEach(msg => {
+            const d = new Date(msg.created_at);
+            if (!isNaN(d)) {
+                const key = d.toDateString();
+                if (key !== lastDate) {
+                    fragment.appendChild(makeDateDivider(d));
+                    lastDate = key;
+                }
+            }
+
+            const mine = String(msg.user_id) === String(currentUserId);
+            const element = document.createElement("div");
+            element.className = `message ${mine ? "outgoing" : "incoming"}`;
+            const time = formatTime(msg.created_at);
+            element.innerHTML = `
+                ${mine ? "" : `<div class="message-avatar" style="background:${avatarColor(msg.username)}">${escapeHtml(getInitials(msg.username))}</div>`}
+                <div class="message-bubble">
+                    ${mine ? "" : `<div class="message-author">${escapeHtml(msg.username || "")}</div>`}
+                    <div class="message-text">${escapeHtml(msg.content)}</div>
+                    <div class="message-time">${time}</div>
+                </div>`;
+            fragment.appendChild(element);
+        });
+
+        // Вставляем после спиннера (если он есть) или в самое начало
+        const spinner = messages.querySelector(".loading-spinner-top");
+        const anchor = spinner ? spinner.nextSibling : messages.firstChild;
+        messages.insertBefore(fragment, anchor);
+    }
+
 
     function renderMessages(list) {
         messages.innerHTML = "";

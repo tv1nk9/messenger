@@ -203,8 +203,8 @@
         return request("/info/user_chats");
     }
 
-    async function getChatHistory(chatId, limit = 50) {
-        return request(`/info/chat_history/${encodeURIComponent(chatId)}?limit=${limit}`);
+    async function getChatHistory(chatId, limit = 50, cursor = null) {
+        return request(`/info/chat_history/${encodeURIComponent(chatId)}?limit=${limit}&cursor=${cursor}`);
     }
 
     /* ---------------- WebSocket ---------------- */
