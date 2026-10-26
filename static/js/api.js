@@ -167,7 +167,7 @@
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: form.toString()
-        });
+        }, false);
         saveTokens(data);
         return data;
     }
