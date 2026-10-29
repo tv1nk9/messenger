@@ -1,6 +1,8 @@
+import redis.asyncio as aioredis
+
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.configs import settings
@@ -11,6 +13,11 @@ from app.domain.auth_service import AuthService
 from app.domain.chat_service import ChatService
 from app.domain.info_service import InfoService
 from app.web.schemas import CurrentUser
+
+async def get_redis(request: Request) -> aioredis.Redis:
+    return request.app.state.redis
+
+RedisDep = Annotated[aioredis.Redis, Depends(get_redis)]
 
 
 def get_auth_service(session: SessionDep) -> AuthService:

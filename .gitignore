@@ -5,3 +5,4 @@ __pycache__
 pgdata
 notes.txt
 logs
+redisdata

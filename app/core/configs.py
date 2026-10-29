@@ -46,6 +46,12 @@ user_config = UserConfig()
 class AppSetting:
     API_V1_STR: str = "/api/v1"
 
+    REDIS_URL: str = "redis://redis:6379"
+    redis_max_connections: int = 20
+    redis_socket_timeout: float = 5.0
+    redis_connect_timeout: float = 5.0
+    redis_health_check_interval: int = 30
+
     CORS_ORIGINS: list[str] = ["http://92.242.63.116"]
     CORS_METHODS: list[str] = ["GET", "POST"]
     CORS_HEADERS: list[str] = []
