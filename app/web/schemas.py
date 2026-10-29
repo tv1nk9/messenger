@@ -111,8 +111,8 @@ class FindUserRequest(BaseModel):
     """Поиск пользователя по ФИО"""
 
     name: str
-    offset: int | None = 0
-    limit: int | None = 10
+    offset: int = 0
+    limit: int = 10
 
 
 class FindUsersResponse(BaseModel):
