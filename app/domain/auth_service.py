@@ -77,17 +77,26 @@ class AuthService:
                 status_code=401, detail="Invalid or expired refresh token"
             )
 
-        user_id = payload.get("sub")
+        user_id: str | None = payload.get("sub")
         if not user_id:
             logger.warning("Invalid token payload")
             raise HTTPException(status_code=401, detail="Invalid token payload")
         user_role = payload.get("role")
+        if user_role == 'admin':
+            u_role = UserRole.ADMIN
+        elif user_role == 'user':
+            u_role = UserRole.USER
+        elif user_role == 'moderator':
+            u_role = UserRole.MODERATOR
+        else:
+            logger.warning(f"Invalid role {user_role}")
+            raise HTTPException(status_code=404, detail="Invalid user role")
 
         ver = 1  # временно
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
 
-        return AuthService._get_tokens(user_id, user_role, ver, access_jti, refresh_jti)
+        return AuthService._get_tokens(user_id, u_role, ver, access_jti, refresh_jti)
 
     @staticmethod
     def _get_tokens(
