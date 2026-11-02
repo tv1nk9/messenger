@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import Sequence, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +9,12 @@ from app.db.models import UserModel, UserRole
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
+
+    async def set_last_seen_at(self, user_id: str, last_seen_at: datetime.datetime):
+        cur_user = await self._session.get(UserModel, user_id)
+        if cur_user:
+            cur_user.last_seen_at = last_seen_at
+            await self._session.commit()
 
     async def create_user(
         self,

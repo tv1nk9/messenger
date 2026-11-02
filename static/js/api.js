@@ -207,6 +207,10 @@
         return request(`/info/chat_history/${encodeURIComponent(chatId)}?limit=${limit}&cursor=${cursor}`);
     }
 
+    async function getLastSeenAt(userId) {
+        return request(`/info/presence/heartbeat`);
+    }
+
     /* ---------------- WebSocket ---------------- */
 
     function wsUrl(chatId, token) {
@@ -278,6 +282,8 @@
         };
     }
 
+
+
     /* ---------------- Public API ---------------- */
 
     global.Api = {
@@ -303,6 +309,7 @@
         findUsers,
         getUserChats,
         getChatHistory,
+        getLastSeenAt,
         wsUrl,
         connectChatWs
     };

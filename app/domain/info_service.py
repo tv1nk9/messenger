@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +22,13 @@ class InfoService:
     def __init__(self, session: AsyncSession):
         self._user_repo = UserRepository(session)
         self._chat_repo = ChatRepository(session)
+
+    async def set_last_seen_at(self, cur_user: CurrentUser):
+        try:
+            await self._user_repo.set_last_seen_at(cur_user.user_id, datetime.now(timezone.utc))
+        except Exception as e:
+            logger.warning(f"Set last seen at error: {e}")
+
 
     async def find_users(self, find_users_req: FindUserRequest) -> FindUsersResponse:
 

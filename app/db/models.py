@@ -58,6 +58,9 @@ class UserModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_seen_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), index=True, server_default=func.now(), nullable=True
+    )
 
 
     @property
