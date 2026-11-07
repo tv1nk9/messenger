@@ -6,3 +6,6 @@ pgdata
 notes.txt
 logs
 redisdata
+frontend/node_modules
+frontend/dist
+frontend/build
