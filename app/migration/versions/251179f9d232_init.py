@@ -1,8 +1,8 @@
-"""init migration
+"""init
 
-Revision ID: e8fb749b0ed8
+Revision ID: 251179f9d232
 Revises: 
-Create Date: 2026-10-03 10:40:30.558915
+Create Date: 2026-11-07 13:14:57.372777
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'e8fb749b0ed8'
+revision: str = '251179f9d232'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -30,9 +30,11 @@ def upgrade() -> None:
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('password_hash', sa.String(length=255), nullable=False),
+    sa.Column('last_seen_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
+    op.create_index(op.f('ix_users_last_seen_at'), 'users', ['last_seen_at'], unique=False)
     op.create_table('chats',
     sa.Column('id', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
     sa.Column('chat_type', sa.Enum('private', 'group', name='chat_type_enum'), nullable=False),
@@ -49,7 +51,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('chat_id')
     )
     op.create_table('messages',
-    sa.Column('id', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('chat_id', sa.Uuid(), nullable=False),
     sa.Column('sender_id', sa.Uuid(), nullable=True),
     sa.Column('recipient_id', sa.Uuid(), nullable=True),
@@ -104,5 +106,6 @@ def downgrade() -> None:
     op.drop_table('messages')
     op.drop_table('group_chats')
     op.drop_table('chats')
+    op.drop_index(op.f('ix_users_last_seen_at'), table_name='users')
     op.drop_table('users')
     # ### end Alembic commands ###
