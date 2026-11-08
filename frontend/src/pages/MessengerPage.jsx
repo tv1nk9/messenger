@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Api from "../api/client";
-import ChatItem from "../components/ChatItem";
-import UserResultItem from "../components/UserResultItem";
-import ModalShell from "../components/ModalShell";
-import MessageList from "../components/MessageList";
-import Avatar from "../components/Avatar";
+import Sidebar from "../components/messenger/Sidebar";
+import ChatWindow from "../components/messenger/ChatWindow";
+import CreateGroupModal from "../components/messenger/CreateGroupModal";
+import InviteModal from "../components/messenger/InviteModal";
 import { toast, ToastContainer } from "../hooks/useToast.jsx";
 import { useChatSocket, useDebouncedValue } from "../hooks/useMessengerHooks";
-import { getChatTypeText, normalizeChats, normalizeUsers } from "../lib/helpers";
+import { normalizeChats, normalizeUsers } from "../lib/helpers";
 
 const LIST_WS_MAX = 3;
 
-const roleTitle = (role) =>
-    role === "admin" ? "Администратор" : role === "moderator" ? "Модератор" : "Пользователь";
+const ROLE_TITLES = {
+    admin: "Администратор",
+    moderator: "Модератор",
+    user: "Пользователь",
+};
+
+const roleTitle = (role) => ROLE_TITLES[role] || ROLE_TITLES.user;
 
 export default function MessengerPage() {
     const currentUserIdRef = useRef(null);
@@ -535,126 +539,33 @@ export default function MessengerPage() {
 
     /* ===================== RENDER ===================== */
 
-    const visibleChats = chats.filter((c) => listFilter === "all" || c.type === listFilter);
-    const wsLabel = wsState === "online" ? "Онлайн" : wsState === "offline" ? "Офлайн" : "Соединение…";
+    const visibleChats = chats.filter((chat) => listFilter === "all" || chat.type === listFilter);
 
     return (
         <div className="messenger" ref={messengerRef}>
             <ToastContainer />
+            <Sidebar
+                roleLabel={roleLabel}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+                searchResults={searchResults}
+                debouncedSearch={debouncedSearch}
+                searchHasMore={searchStateRef.current.hasMore}
+                onLoadMoreSearch={loadMoreSearch}
+                onCreatePrivateChat={handleCreatePrivateChat}
+                listFilter={listFilter}
+                onListFilterChange={setListFilter}
+                loadState={loadState}
+                visibleChats={visibleChats}
+                totalChats={chats.length}
+                currentUserId={currentUserIdRef.current}
+                selectedChatId={selectedChatId}
+                onOpenChat={openChat}
+                onRetry={() => { reloadChatsFlag.current += 1; setReloadTick((tick) => tick + 1); }}
+                onLogout={handleLogout}
+                onOpenGroupModal={openGroupModal}
+            />
 
-            {/* ===================== LEFT SIDEBAR ===================== */}
-            <aside className="sidebar">
-                <div className="sidebar-header">
-                    <div className="brand-row">
-                        <div className="brand">
-                            <div className="brand-logo">M</div>
-                            <span>Мессенджер</span>
-                        </div>
-                        <div className="user-chip" title={roleLabel}>
-                            <div className="avatar avatar--sm">{getInitialsForRole()}</div>
-                            <button type="button" className="icon-btn" title="Выйти" onClick={handleLogout}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* SEARCH USERS */}
-                    <div className="search-wrapper">
-                        <label htmlFor="user-search" className="visually-hidden">Поиск пользователей</label>
-                        <svg className="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                        <input
-                            type="text"
-                            className="form-control"
-                            id="user-search"
-                            placeholder="Поиск по ФИО..."
-                            autoComplete="off"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        {searchResults !== null && (
-                            <div className="search-results card-pop">
-                                {searchResults.length === 0 ? (
-                                    <div className="search-msg">{debouncedSearch ? "Пользователи не найдены" : ""}</div>
-                                ) : (
-                                    <>
-                                        {searchResults.map((user) => (
-                                            <UserResultItem
-                                                key={user.id}
-                                                user={user}
-                                                action="Написать →"
-                                                onClick={() => handleCreatePrivateChat(user.id)}
-                                            />
-                                        ))}
-                                        {searchStateRef.current.hasMore && (
-                                            <button type="button" className="search-load-more" onClick={loadMoreSearch}>
-                                                Показать ещё
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* TABS */}
-                    <div className="chat-tabs" role="tablist">
-                        {[["all", "Все"], ["private", "Личные"], ["group", "Группы"]].map(([filter, label]) => (
-                            <button
-                                key={filter}
-                                className={"chat-tab" + (listFilter === filter ? " active" : "")}
-                                type="button"
-                                onClick={() => setListFilter(filter)}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* CHAT LIST */}
-                <div className="chat-list">
-                    {loadState === "loading" && (
-                        <div className="chat-empty"><span className="spinner"></span> Загрузка чатов...</div>
-                    )}
-                    {loadState === "error" && (
-                        <div className="chat-empty">
-                            Не удалось загрузить чаты.<br />
-                            <button
-                                className="btn btn-sm btn-outline-primary mt-2"
-                                onClick={() => { reloadChatsFlag.current += 1; setReloadTick((t) => t + 1); }}
-                            >
-                                Повторить
-                            </button>
-                        </div>
-                    )}
-                    {loadState === "ready" && visibleChats.length === 0 && (
-                        <div className="chat-empty">
-                            {chats.length
-                                ? "В этой категории пока пусто."
-                                : <>У вас пока нет чатов.<br />Найдите собеседника через поиск или создайте группу.</>}
-                        </div>
-                    )}
-                    {loadState === "ready" && visibleChats.map((chat) => (
-                        <ChatItem
-                            key={chat.id}
-                            chat={chat}
-                            currentUserId={currentUserIdRef.current}
-                            active={chat.id === String(selectedChatId)}
-                            onClick={() => openChat(chat)}
-                        />
-                    ))}
-                </div>
-
-                {/* ACTIONS */}
-                <div className="sidebar-footer">
-                    <button type="button" className="btn btn-primary w-100" onClick={openGroupModal}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        {" "}Создать групповой чат
-                    </button>
-                </div>
-            </aside>
-
-            {/* ===================== MAIN CONTENT ===================== */}
             <main className="content">
                 {!selectedChatId && (
                     <section className="welcome">
@@ -665,150 +576,50 @@ export default function MessengerPage() {
                         </div>
                     </section>
                 )}
-
                 {selectedChat && (
-                    <section className="chat-window open">
-                        <header className="chat-header">
-                            <button type="button" className="icon-btn back-btn" title="Назад к чатам" onClick={goBackToList}>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-                            </button>
-                            <Avatar name={selectedChat.name} />
-                            <div className="chat-header-info">
-                                <div className="chat-header-name">{selectedChat.name}</div>
-                                <div className="chat-header-type">{getChatTypeText(selectedChat.type)}</div>
-                            </div>
-                            <div className={`ws-status ws-status--${wsState}`} title="Статус соединения">
-                                <span className="ws-dot"></span><span className="ws-label">{wsLabel}</span>
-                            </div>
-                            {selectedChat.type === "group" && (
-                                <button type="button" className="btn btn-outline-secondary btn-sm add-member-btn"
-                                        title="Пригласить пользователя в чат" onClick={openInviteModal}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                                    {" "}Пригласить
-                                </button>
-                            )}
-                        </header>
-
-                        <div className="messages" ref={messagesRef}>
-                            {loadingMore && <div className="loading-spinner-top">Загрузка...</div>}
-                            {historyState === "loading" && (
-                                <div className="messages-empty"><span className="spinner"></span> Загрузка сообщений...</div>
-                            )}
-                            {historyState === "error" && (
-                                <div className="messages-empty">Не удалось загрузить сообщения.</div>
-                            )}
-                            {historyState === "idle" && (
-                                <MessageList messages={messages} currentUserId={currentUserIdRef.current} />
-                            )}
-                        </div>
-
-                        <div className="message-input">
-                            <form onSubmit={sendMessage}>
-                                <div className="composer">
-                                    <label htmlFor="message-input" className="visually-hidden">Сообщение</label>
-                                    <textarea
-                                        className="composer-field"
-                                        id="message-input"
-                                        rows={1}
-                                        placeholder="Введите сообщение..."
-                                        maxLength={1000}
-                                        disabled={!composerEnabled}
-                                        value={composerValue}
-                                        ref={composerRef}
-                                        onChange={(e) => { setComposerValue(e.target.value); autoResize(); }}
-                                        onKeyDown={onComposerKeyDown}
-                                    ></textarea>
-                                    <button type="submit" className="send-btn" title="Отправить" disabled={!composerEnabled}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                                    </button>
-                                </div>
-                                <div className="composer-hint">{composerEnabled ? "" : "Ожидание соединения..."}</div>
-                            </form>
-                        </div>
-                    </section>
+                    <ChatWindow
+                        chat={selectedChat}
+                        wsState={wsState}
+                        historyState={historyState}
+                        messages={messages}
+                        currentUserId={currentUserIdRef.current}
+                        loadingMore={loadingMore}
+                        messagesRef={messagesRef}
+                        composerRef={composerRef}
+                        composerValue={composerValue}
+                        onComposerChange={(value) => { setComposerValue(value); requestAnimationFrame(autoResize); }}
+                        onComposerKeyDown={onComposerKeyDown}
+                        onSendMessage={sendMessage}
+                        onBack={goBackToList}
+                        onOpenInvite={openInviteModal}
+                    />
                 )}
             </main>
 
-            {/* Mobile sidebar backdrop */}
             <div className="sidebar-backdrop" onClick={goBackToList}></div>
 
-            {/* ===================== CREATE GROUP MODAL ===================== */}
-            <ModalShell open={groupOpen} onClose={() => setGroupOpen(false)}>
-                <form onSubmit={handleCreateGroup}>
-                    <div className="modal-header">
-                        <h5 className="modal-title">Новый групповой чат</h5>
-                        <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-                    </div>
-                    <div className="modal-body">
-                        {groupError && <div className="alert alert-danger">{groupError}</div>}
-                        <div className="mb-3">
-                            <label htmlFor="group-name" className="form-label">Название</label>
-                            <input
-                                type="text" className="form-control" id="group-name"
-                                minLength={2} maxLength={16} required
-                                value={groupName} onChange={(e) => setGroupName(e.target.value)}
-                            />
-                            <div className="form-text">От 2 до 16 символов</div>
-                        </div>
-                        <div className="mb-3">
-                            <label htmlFor="group-description" className="form-label">Описание</label>
-                            <textarea
-                                className="form-control" id="group-description" rows={3} maxLength={250}
-                                placeholder="Групповой чат"
-                                value={groupDescription} onChange={(e) => setGroupDescription(e.target.value)}
-                            ></textarea>
-                        </div>
-                    </div>
-                    <div className="modal-footer">
-                        <button type="button" className="btn btn-light" data-bs-dismiss="modal">Отмена</button>
-                        <button type="submit" className="btn btn-primary" disabled={groupBusy}>
-                            {groupBusy ? "Создание..." : "Создать"}
-                        </button>
-                    </div>
-                </form>
-            </ModalShell>
-
-            {/* ===================== INVITE MODAL ===================== */}
-            <ModalShell open={inviteOpen} onClose={() => setInviteOpen(false)}>
-                <div className="modal-header">
-                    <h5 className="modal-title">Пригласить в чат «{selectedChat ? selectedChat.name : ""}»</h5>
-                    <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-                </div>
-                <div className="modal-body">
-                    {inviteMsg && <div className={`alert alert-${inviteMsg.kind}`}>{inviteMsg.text}</div>}
-                    <div className="mb-3">
-                        <label htmlFor="invite-search" className="form-label">Найти пользователя по ФИО</label>
-                        <input
-                            type="text" className="form-control" id="invite-search"
-                            placeholder="Иванов Иван..." autoComplete="off"
-                            value={inviteQuery} onChange={(e) => setInviteQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="invite-results">
-                        {!debouncedInvite ? (
-                            <div className="text-muted small">Начните вводить имя для поиска.</div>
-                        ) : inviteResults.length === 0 ? (
-                            <div className="text-muted small">Пользователи не найдены.</div>
-                        ) : (
-                            inviteResults.map((user) => {
-                                const fullName = [user.surname, user.name, user.patronymic].filter(Boolean).join(" ");
-                                return (
-                                    <UserResultItem
-                                        key={user.id}
-                                        user={user}
-                                        action="Пригласить →"
-                                        onClick={() => inviteUser(user.id, fullName)}
-                                    />
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-            </ModalShell>
+            <CreateGroupModal
+                open={groupOpen}
+                name={groupName}
+                description={groupDescription}
+                error={groupError}
+                busy={groupBusy}
+                onClose={() => setGroupOpen(false)}
+                onNameChange={setGroupName}
+                onDescriptionChange={setGroupDescription}
+                onSubmit={handleCreateGroup}
+            />
+            <InviteModal
+                open={inviteOpen}
+                chatName={selectedChat ? selectedChat.name : ""}
+                query={inviteQuery}
+                debouncedQuery={debouncedInvite}
+                results={inviteResults}
+                message={inviteMsg}
+                onClose={() => setInviteOpen(false)}
+                onQueryChange={setInviteQuery}
+                onInvite={inviteUser}
+            />
         </div>
     );
-}
-
-function getInitialsForRole() {
-    return "?";
 }
