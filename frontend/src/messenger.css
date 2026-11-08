@@ -27,7 +27,7 @@ body {
 .messenger {
     display: flex;
     height: 100vh;
-    max-width: 1500px;
+    max-width: 100%;
     margin: 0 auto;
     background: var(--panel);
     box-shadow: 0 0 60px rgba(15, 23, 42, .08);
@@ -112,7 +112,6 @@ body {
 }
 
 .search-results {
-    display: none;
     position: absolute;
     top: calc(100% + 6px);
     left: 0; right: 0;
@@ -374,9 +373,24 @@ body {
 }
 .date-divider::before, .date-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-.message { display: flex; align-items: flex-end; gap: 8px; max-width: 78%; animation: msgIn .18s ease-out; }
-.message.outgoing { align-self: flex-end; flex-direction: row-reverse; }
-.message.incoming { align-self: flex-start; }
+/*.message { display: flex; align-items: flex-end; gap: 8px; max-width: 78%; animation: msgIn .18s ease-out; }*/
+/*.message.outgoing { align-self: flex-end; flex-direction: row-reverse; }*/
+/*.message.incoming { align-self: flex-start; }*/
+
+.message {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%; /* Контейнер занимает всю ширину */
+    animation: msgIn .18s ease-out;
+}
+.message.outgoing {
+    flex-direction: row-reverse;
+    justify-content: flex-start; /* В row-reverse прижимает пузырь к правому краю */
+}
+.message.incoming {
+    justify-content: flex-start; /* Прижимает пузырь к левому краю */
+}
 
 @keyframes msgIn {
     from { opacity: 0; transform: translateY(6px); }
@@ -400,6 +414,10 @@ body {
     box-shadow: 0 1px 2px rgba(15,23,42,.08);
     position: relative;
     word-break: break-word;
+
+    max-width: 75%;
+    overflow-wrap: anywhere;
+
 }
 .message.incoming .message-bubble { border-bottom-left-radius: 6px; }
 .message.outgoing .message-bubble {
@@ -410,7 +428,7 @@ body {
 }
 
 .message-author { font-size: 11.5px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
-.message-text { font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; }
+.message-text { font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-time {
     font-size: 10.5px;
     margin-top: 3px;
@@ -537,7 +555,8 @@ body {
     .messenger.show-chat .content { position: absolute; inset: 0; z-index: 50; }
     .messenger.show-chat .sidebar-backdrop { display: block; }
     .back-btn { display: inline-flex !important; }
-    .message { max-width: 90%; }
+    /*.message { max-width: 90%; }*/
+    .message-bubble { max-width: 85%; }
     .add-member-btn span, .add-member-btn { font-size: 12px; }
     .ws-status .ws-label { display: none; }
 }
