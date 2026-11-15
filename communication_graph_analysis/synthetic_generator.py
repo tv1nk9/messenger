@@ -93,6 +93,10 @@ def generate_synthetic_dataset(
     # (иначе ground truth был бы нарушен).
     core = [u for u, p in users.items() if p in ("active", "hub")]
     ignored_users = [u for u, p in users.items() if p == "ignored"]
+    non_isolated = [
+        u for u, p in users.items()
+        if p not in ISOLATED_PROFILES and p != "bot"
+    ]
     for u in core:
         prof = users[u]
         # партнёры выбираются только из core (активные/хабы): так изолированные
@@ -138,7 +142,10 @@ def generate_synthetic_dataset(
         if prof != "drifting":
             continue
         mid = start + timedelta(days=int(days * 0.35))
-        partners = rng.sample([v for v in names if v != u], k=3)
+        partners = rng.sample(
+            [v for v in non_isolated if v != u],
+            k=min(3, len(non_isolated)),
+        )
         for p in partners:
             for _ in range(rng.randint(6, 12)):
                 t = rnd_time(start, mid)
@@ -159,7 +166,10 @@ def generate_synthetic_dataset(
     # выбирают партнёров только внутри ядра (core), а «игнорируемые» пишут
     # регулярные монологи в пустоту (~1 сообщение в день на адресата).
     for u in ignored_users:
-        targets = rng.sample([v for v in names if v != u], k=4)
+        targets = rng.sample(
+            [v for v in non_isolated if v != u],
+            k=min(4, len(non_isolated)),
+        )
         for tg in targets:
             for _ in range(max(2, days)):
                 t = rnd_time(start, end)
