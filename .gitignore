@@ -9,3 +9,4 @@ redisdata
 frontend/node_modules
 frontend/dist
 frontend/build
+communication_graph_analysis/results
