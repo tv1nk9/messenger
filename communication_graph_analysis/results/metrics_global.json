@@ -1,0 +1,14 @@
+{
+  "n_users": 40,
+  "n_messages": 3459,
+  "n_edges": 1065,
+  "density": 0.6826923076923077,
+  "avg_degree": 26.625,
+  "reciprocity": 0.9408450704225352,
+  "n_weak_components": 1,
+  "n_strong_components": 2,
+  "largest_component_share": 1.0,
+  "avg_path_length": null,
+  "avg_clustering": 0.9563187544524618,
+  "isolated_zero_degree_share": 0.0
+}
