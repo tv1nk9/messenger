@@ -32,8 +32,8 @@
         степени нарушения каждого критерия, β_i — веса (настраиваются).
 
 Пользователь признаётся изолированным, если:
-        IsolationScore(u) ≥ threshold  И  выполнено не менее k обязательных
-        базовых критериев (К1 или К3) — это отсекает ложные срабатывания у
+    IsolationScore(u) ≥ threshold  И  выполнено не менее k обязательных
+    базовых критериев (К1, К2 или К3) — это отсекает ложные срабатывания у
     «интровертных, но включённых» сотрудников (мало пишут, но оперативно
     отвечают и получают персональные сообщения).
 
@@ -48,6 +48,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 
 import numpy as np
+import networkx as nx
 
 from .metrics import NodeMetrics, compute_node_metrics
 from .models import CommunicationGraph
@@ -75,9 +76,9 @@ class IsolationConfig:
     pagerank_percentile: float = 10.0   # нижний перцентиль PageRank
     theta_c: float = 0.15               # мин. closeness centrality
     # --- агрегирование
-    weights: tuple[float, float, float, float] = (0.35, 0.20, 0.30, 0.15)
-    score_threshold: float = 0.55
-    required_criteria: int = 1      # минимум из {К1, К3}
+    weights: tuple[float, float, float, float] = (0.30, 0.40, 0.25, 0.05)
+    score_threshold: float = 0.30
+    required_criteria: int = 1      # минимум из {К1, К2, К3}
     # сотрудники, чьи сообщения являются массовыми рассылками (боты/оповещения)
     exclude_bots: bool = True
     bot_out_degree_share: float = 0.8  # пишет ≥80% коллег без входящих DM
@@ -116,6 +117,8 @@ class IsolationAssessment:
             "f4": round(self.f4, 3),
             "out_weight": self.metrics.out_weight,
             "in_weight": self.metrics.in_weight,
+            "personal_out_weight": self.metrics.personal_out_weight,
+            "personal_in_weight": self.metrics.personal_in_weight,
             "mutual_partners": self.metrics.mutual_partners,
             "max_silence_days": round(self.metrics.max_silence_days, 2),
             "last_seen_gap_days": round(self.metrics.last_seen_gap_days, 2),
@@ -149,7 +152,9 @@ def detect_isolated_users(
     n = cg.n_users
 
     # PageRank-перцентиль для критерия К4
-    pr_values = np.array([m.pagerank for m in metrics.values()])
+    weak_components = list(nx.weakly_connected_components(g))
+    giant = set(max(weak_components, key=len)) if weak_components else set()
+    pr_values = np.array([m.pagerank for u, m in metrics.items() if u in giant])
     pr_cut = float(np.percentile(pr_values, cfg.pagerank_percentile))
 
     assessments: list[IsolationAssessment] = []
@@ -170,10 +175,8 @@ def detect_isolated_users(
 
         # ================= К1: дефицит исходящей инициативы ================
         win_out = sum(
-            d["weight"]
+            sum(ts >= win_start for ts in d["timestamps"])
             for _, _, d in g.out_edges(u, data=True)
-            for ts_last in [d["last_seen"]]
-            if ts_last >= win_start
         )
         avg_out_per_day = win_out / win_days
         a.criterion_c1 = (
@@ -194,20 +197,16 @@ def detect_isolated_users(
         # Учитывается ИМЕНАПРАВЛЕННОСТЬ: ответные рёбра v→u (коллега ответил
         # пользователю u) — признак включённого диалога; односторонние потоки
         # (монологи без отклика или только групповой шум) — признак изоляции.
-        response_in = sum(
-            d["weight"] + d["reply_weight"]
-            for v, _, d in g.in_edges(u, data=True)
-            if v != "bot_notice"
-        )  # весь входящий поток
         response_personal = sum(
-            d["weight"] for v, _, d in g.in_edges(u, data=True)
+            d["reply_weight"] for v, _, d in g.in_edges(u, data=True)
             if v != "bot_notice" and g.has_edge(u, v)
-        )  # входящие от тех, кому u сам писал (персональные диалоги)
-        reciprocity_idx = min(m.in_weight, m.out_weight) / (
-            m.in_weight + m.out_weight + 1
+        )  # replies from people with whom u has a two-way connection
+        reciprocity_idx = min(m.personal_in_weight, m.personal_out_weight) / (
+            m.personal_in_weight + m.personal_out_weight + 1
         )
         low_volume = (
-            m.out_weight < cfg.mu_out and m.in_weight < cfg.mu_in
+            m.personal_out_weight < cfg.mu_out
+            and m.personal_in_weight < cfg.mu_in
         )  # почти нет персональной переписки (кроме группового шума)
         no_dialogue = response_personal < 3 and m.mutual_partners <= cfg.theta_m
         a.criterion_c2 = (
@@ -223,9 +222,9 @@ def detect_isolated_users(
             1 - m.mutual_partners / (cfg.theta_m + 1)
         ))
         if a.criterion_c2:
-            if m.in_weight > 3 * max(m.out_weight, 1):
+            if m.personal_in_weight > 3 * max(m.personal_out_weight, 1):
                 kind = "passive receiver (broadcast target)"
-            elif m.out_weight > 3 * max(m.in_weight, 1):
+            elif m.personal_out_weight > 3 * max(m.personal_in_weight, 1):
                 kind = "unanswered broadcaster"
             else:
                 kind = "negligible personal dialogue"
@@ -271,13 +270,14 @@ def detect_isolated_users(
             )
 
         # ================== К4: периферийность =============================
-        a.criterion_c4 = (
-            m.pagerank <= pr_cut and m.closeness <= cfg.theta_c
-        )
-        a.f4 = _clip01(
-            0.5 * (1 - _clip01(m.closeness / max(cfg.theta_c, 1e-9)))
-            + 0.5 * (1 - _clip01(m.pagerank / max(pr_cut, 1e-12)))
-        )
+        if u in giant:
+            a.criterion_c4 = (
+                m.pagerank <= pr_cut and m.closeness <= cfg.theta_c
+            )
+            a.f4 = _clip01(
+                0.5 * (1 - _clip01(m.closeness / max(cfg.theta_c, 1e-9)))
+                + 0.5 * (1 - _clip01(m.pagerank / max(pr_cut, 1e-12)))
+            )
         if a.criterion_c4:
             a.reasons.append(
                 f"К4: peripherality (PR={m.pagerank:.5f} ≤ p{cfg.pagerank_percentile:.0f}, "
@@ -287,7 +287,11 @@ def detect_isolated_users(
         # =================== итоговый скоринг ==============================
         b1, b2, b3, b4 = cfg.weights
         a.score = b1 * a.f1 + b2 * a.f2 + b3 * a.f3 + b4 * a.f4
-        base_hits = int(a.criterion_c1) + int(a.criterion_c3)
+        base_hits = (
+            int(a.criterion_c1)
+            + int(a.criterion_c2)
+            + int(a.criterion_c3)
+        )
         a.isolated = (not a.is_bot) and (
             a.score >= cfg.score_threshold
             and base_hits >= cfg.required_criteria

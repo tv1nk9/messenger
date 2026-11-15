@@ -43,6 +43,8 @@ class NodeMetrics:
     in_degree: int = 0             # число уникальных отправителей ему
     out_weight: int = 0            # всего исходящих сообщений
     in_weight: int = 0             # всего входящих сообщений
+    personal_out_weight: int = 0
+    personal_in_weight: int = 0
     total_weight: int = 0
     mutual_partners: int = 0       # партнёры с двусторонней связью
     reply_in_weight: int = 0       # ответов ПРИШЛО пользователю (v→u reply_weight? см. ниже)
@@ -73,7 +75,9 @@ def compute_node_metrics(cg: CommunicationGraph) -> dict[str, NodeMetrics]:
     und = _undigraph(g)
     betweenness = nx.betweenness_centrality(g)
     try:
-        closeness = nx.closeness_centrality(g)
+        # Closeness describes structural proximity, independent of message
+        # direction; direction is handled separately by in/out features.
+        closeness = nx.closeness_centrality(und)
     except Exception:  # pragma: no cover - пустой граф
         closeness = {u: 0.0 for u in users}
     pagerank = nx.pagerank(g, weight="weight")
@@ -88,6 +92,12 @@ def compute_node_metrics(cg: CommunicationGraph) -> dict[str, NodeMetrics]:
         m.in_degree = g.in_degree(u)
         m.out_weight = sum(d["weight"] for _, _, d in g.out_edges(u, data=True))
         m.in_weight = sum(d["weight"] for _, _, d in g.in_edges(u, data=True))
+        m.personal_out_weight = sum(
+            d["personal_weight"] for _, _, d in g.out_edges(u, data=True)
+        )
+        m.personal_in_weight = sum(
+            d["personal_weight"] for _, _, d in g.in_edges(u, data=True)
+        )
         m.total_weight = m.out_weight + m.in_weight
         m.reply_out_weight = sum(
             d["reply_weight"] for _, _, d in g.out_edges(u, data=True)
@@ -95,8 +105,14 @@ def compute_node_metrics(cg: CommunicationGraph) -> dict[str, NodeMetrics]:
         m.reply_in_weight = sum(
             d["reply_weight"] for _, _, d in g.in_edges(u, data=True)
         )
-        partners_out = {v for _, v in g.out_edges(u)}
-        partners_in = {v for v, _ in g.in_edges(u)}
+        partners_out = {
+            v for _, v, d in g.out_edges(u, data=True)
+            if d["personal_weight"] > 0
+        }
+        partners_in = {
+            v for v, _, d in g.in_edges(u, data=True)
+            if d["personal_weight"] > 0
+        }
         m.mutual_partners = len(partners_out & partners_in)
         deg = m.out_degree + m.in_degree
         m.degree_centrality = deg / (n - 1) if n > 1 else 0.0
@@ -115,7 +131,7 @@ def compute_node_metrics(cg: CommunicationGraph) -> dict[str, NodeMetrics]:
                 for _, v, d in g.in_edges(u, data=True)
                 for t in d["timestamps"]
             )
-        m.active_days = len(nd.get("active_days", set()))
+        m.active_days = len({t.date() for t in all_ts})
         tr = cg.time_range
         if tr is not None:
             last = nd["last_seen"] or (all_ts[-1] if all_ts else tr[0])

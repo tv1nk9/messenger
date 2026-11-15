@@ -28,7 +28,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Mapping
 
 import networkx as nx
 
@@ -70,6 +70,8 @@ class CommunicationEdge:
     first_seen: datetime | None = None
     last_seen: datetime | None = None
     reply_weight: int = 0                    # число ответов (диалогических связей)
+    personal_weight: int = 0                 # direct + reply, без group-шумa
+    group_weight: int = 0
     timestamps: list[datetime] = field(default_factory=list)
 
     @property
@@ -92,13 +94,30 @@ class CommunicationGraph:
         self,
         messages: Iterable[MessageRecord] = (),
         window_days: int = 7,
+        chat_members: Mapping[str, Iterable[str]] | None = None,
     ) -> None:
         self.graph = nx.DiGraph()
         self.window_days = window_days
         self._messages: list[MessageRecord] = []
         self._members_by_chat: dict[str, set[str]] = {}
-        for m in messages:
+        for chat_id, members in (chat_members or {}).items():
+            self._members_by_chat[chat_id] = set(members)
+        message_list = list(messages)
+        # Group membership is a property of the chat, not of message order.
+        # Pre-register observed participants so earlier group messages are not
+        # lost merely because a participant first appears later in the log.
+        for m in message_list:
+            self._members_by_chat.setdefault(m.chat_id, set()).add(m.sender)
+            if m.recipient:
+                self._members_by_chat[m.chat_id].add(m.recipient)
+        for m in message_list:
             self.add_message(m)
+
+    def register_chat_members(
+        self, chat_id: str, members: Iterable[str]
+    ) -> None:
+        """Registers explicit chat membership before group events are added."""
+        self._members_by_chat.setdefault(chat_id, set()).update(members)
 
     # ------------------------------------------------------------------ build
     def add_message(self, msg: MessageRecord) -> None:
@@ -138,20 +157,28 @@ class CommunicationGraph:
         if self.graph.has_edge(u, v):
             d = self.graph[u][v]
         else:
-            d = {
-                "weight": 0,
-                "first_seen": msg.timestamp,
-                "last_seen": msg.timestamp,
-                "reply_weight": 0,
-                "timestamps": [],
-            }
-            self.graph.add_edge(u, v, **d)
+            self.graph.add_edge(
+                u,
+                v,
+                weight=0,
+                first_seen=msg.timestamp,
+                last_seen=msg.timestamp,
+                reply_weight=0,
+                personal_weight=0,
+                group_weight=0,
+                timestamps=[],
+            )
+            d = self.graph[u][v]
         d["weight"] += 1
         d["first_seen"] = min(d["first_seen"], msg.timestamp)
         d["last_seen"] = max(d["last_seen"], msg.timestamp)
         d["timestamps"].append(msg.timestamp)
         if msg.event_type == EVENT_REPLY:
             d["reply_weight"] += 1
+        if msg.event_type == EVENT_GROUP:
+            d["group_weight"] += 1
+        else:
+            d["personal_weight"] += 1
 
         nd = self.graph.nodes[u]
         nd["sent"] += 1
@@ -209,6 +236,8 @@ class CommunicationGraph:
                 first_seen=d["first_seen"],
                 last_seen=d["last_seen"],
                 reply_weight=d["reply_weight"],
+                personal_weight=d["personal_weight"],
+                group_weight=d["group_weight"],
                 timestamps=list(d["timestamps"]),
             )
 
@@ -271,8 +300,14 @@ class CommunicationGraph:
         g = self.graph.copy()
         for _, _, d in g.edges(data=True):
             d.pop("timestamps", None)
+            for key in ("first_seen", "last_seen"):
+                if isinstance(d.get(key), datetime):
+                    d[key] = d[key].isoformat()
         for _, nd in g.nodes(data=True):
             nd["active_days"] = len(nd.get("active_days", set()))
+            for key in ("first_seen", "last_seen"):
+                if isinstance(nd.get(key), datetime):
+                    nd[key] = nd[key].isoformat()
         nx.write_gexf(g, str(path))
 
     def density(self) -> float:
