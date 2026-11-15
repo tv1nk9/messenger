@@ -120,3 +120,31 @@ class FindUsersResponse(BaseModel):
 
     users: dict[str, tuple[str, str, str | None, str]] | None
     has_more: bool
+
+
+class CommunicationIsolationItem(BaseModel):
+    user_id: str
+    score: float
+    isolated: bool
+    is_bot: bool
+    criterion_c1: bool
+    criterion_c2: bool
+    criterion_c3: bool
+    criterion_c4: bool
+    f1: float
+    f2: float
+    f3: float
+    f4: float
+    personal_in_weight: int
+    personal_out_weight: int
+    mutual_partners: int
+    max_silence_days: float
+    last_seen_gap_days: float
+    reasons: list[str]
+
+
+class CommunicationIsolationResponse(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    window_days: int
+    users: list[CommunicationIsolationItem]
